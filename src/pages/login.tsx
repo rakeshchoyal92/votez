@@ -47,9 +47,10 @@ export function LoginPage() {
         .count-pop { animation: count-pop 0.3s ease-out; }
       `}</style>
 
-      <div className="min-h-screen flex bg-background">
-        {/* ─── Left: Showcase (desktop) ─── */}
-        <div className="hidden lg:flex lg:w-[52%] relative overflow-hidden bg-[#0a0a12]">
+      {/* ─── Desktop: side-by-side ─── */}
+      <div className="hidden lg:flex min-h-screen bg-background">
+        {/* Left: Showcase */}
+        <div className="w-[52%] relative overflow-hidden bg-[#0a0a12] flex">
           {/* Mesh blobs */}
           <div className="absolute inset-0">
             <div
@@ -74,7 +75,6 @@ export function LoginPage() {
 
           {/* Content */}
           <div className="relative z-10 flex flex-col justify-center w-full px-16 xl:px-20">
-            {/* Tagline */}
             <div
               className="mb-14"
               style={{ animation: 'fade-up 0.8s ease-out both' }}
@@ -91,26 +91,24 @@ export function LoginPage() {
               </p>
             </div>
 
-            {/* Live poll card */}
             <div style={{ animation: 'fade-up 0.8s ease-out 0.2s both' }}>
               <LivePollCard />
             </div>
           </div>
 
-          {/* Bottom vignette */}
           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#0a0a12] to-transparent pointer-events-none" />
         </div>
 
-        {/* ─── Right: Sign-in form ─── */}
-        <div className="flex-1 flex items-center justify-center px-6 py-12 lg:px-12">
+        {/* Right: Sign-in form */}
+        <div className="flex-1 flex items-center justify-center px-12">
           <div
             className="w-full max-w-sm"
             style={{ animation: 'fade-up 0.6s ease-out both' }}
           >
-            <Logo size="lg" className="mb-10 justify-center lg:justify-start" to="/" />
+            <Logo size="lg" className="mb-10" to="/" />
 
             <div className="space-y-6">
-              <div className="lg:text-left text-center">
+              <div>
                 <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
                 <p className="text-muted-foreground text-sm mt-1">
                   Sign in to your account
@@ -119,9 +117,9 @@ export function LoginPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email-d">Email</Label>
                   <Input
-                    id="email"
+                    id="email-d"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -135,10 +133,10 @@ export function LoginPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password-d">Password</Label>
                   <div className="relative">
                     <Input
-                      id="password"
+                      id="password-d"
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -164,6 +162,110 @@ export function LoginPage() {
                   type="submit"
                   disabled={isLoading}
                   className="w-full h-11 text-base font-semibold mt-2"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Sign in'
+                  )}
+                </Button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Mobile: stacked layout ─── */}
+      <div className="lg:hidden min-h-screen flex flex-col bg-[#0a0a12]">
+        {/* Hero top section */}
+        <div className="relative overflow-hidden px-6 pt-14 pb-10">
+          {/* Mesh blobs */}
+          <div className="absolute inset-0">
+            <div
+              className="absolute top-[-40%] left-[-20%] w-[400px] h-[400px] rounded-full bg-violet-600/30 blur-[80px]"
+              style={{ animation: 'mesh-a 18s ease-in-out infinite' }}
+            />
+            <div
+              className="absolute bottom-[-40%] right-[-20%] w-[350px] h-[350px] rounded-full bg-indigo-500/25 blur-[80px]"
+              style={{ animation: 'mesh-b 22s ease-in-out infinite' }}
+            />
+          </div>
+
+          <div className="relative z-10 text-center" style={{ animation: 'fade-up 0.6s ease-out both' }}>
+            <Logo size="lg" className="justify-center mb-8" to="/" />
+            <h1 className="text-3xl sm:text-4xl font-bold leading-[1.15] tracking-tight text-white">
+              Live polls,
+              <br />
+              <span className="bg-gradient-to-r from-violet-300 via-purple-300 to-indigo-300 bg-clip-text text-transparent">
+                instant insights.
+              </span>
+            </h1>
+            <p className="mt-3 text-sm text-white/45 max-w-xs mx-auto font-light">
+              Engage any audience in seconds.
+            </p>
+          </div>
+        </div>
+
+        {/* Form card — overlaps hero slightly */}
+        <div className="relative z-10 flex-1 -mt-2">
+          <div
+            className="bg-background rounded-t-3xl px-6 pt-8 pb-10 min-h-full"
+            style={{ animation: 'fade-up 0.5s ease-out 0.15s both' }}
+          >
+            <div className="max-w-sm mx-auto space-y-6">
+              <div className="text-center">
+                <h2 className="text-xl font-bold tracking-tight">Welcome back</h2>
+                <p className="text-muted-foreground text-sm mt-1">
+                  Sign in to your account
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email-m">Email</Label>
+                  <Input
+                    id="email-m"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="you@example.com"
+                    className="h-12"
+                    autoComplete="email"
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password-m">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password-m"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      placeholder="Enter your password"
+                      className="h-12 pr-10"
+                      autoComplete="current-password"
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full h-12 text-base font-semibold mt-2"
                 >
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

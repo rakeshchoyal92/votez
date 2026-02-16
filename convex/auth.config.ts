@@ -5,9 +5,7 @@ const authConfig = {
   providers: [
     {
       // Supabase uses RS256 JWTs
-      domain: process.env.SUPABASE_URL
-        ? `${process.env.SUPABASE_URL}/auth/v1`
-        : 'https://svaxyhjoanqvadottcda.supabase.co/auth/v1',
+      domain: 'https://svaxyhjoanqvadottcda.supabase.co/auth/v1',
       applicationID: 'supabase',
     },
   ],

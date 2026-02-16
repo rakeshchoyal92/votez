@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id, Doc } from '../../convex/_generated/dataModel'
@@ -16,6 +16,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
   const createQuestion = useMutation(api.questions.create)
   const updateQuestion = useMutation(api.questions.update)
   const removeQuestion = useMutation(api.questions.remove)
+  const reorderQuestions = useMutation(api.questions.reorder)
   const updateTitle = useMutation(api.sessions.updateTitle)
   const updateMaxParticipants = useMutation(api.sessions.updateMaxParticipants)
 
@@ -29,6 +30,31 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
   const [optionsDraft, setOptionsDraft] = useState<string[]>([])
   const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null)
 
+  // --- Optimistic reorder state ---
+  const [optimisticOrder, setOptimisticOrder] = useState<string[] | null>(null)
+  const optimisticTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+
+  // Clear optimistic state when server data catches up
+  useEffect(() => {
+    if (!optimisticOrder || !questions) return
+    const serverOrder = [...questions]
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((q) => q._id)
+    const matches =
+      serverOrder.length === optimisticOrder.length &&
+      optimisticOrder.every((id, i) => serverOrder[i] === id)
+    if (matches) {
+      setOptimisticOrder(null)
+    }
+  }, [questions, optimisticOrder])
+
+  // Safety: clear optimistic state after 3s no matter what
+  useEffect(() => {
+    return () => {
+      if (optimisticTimeoutRef.current) clearTimeout(optimisticTimeoutRef.current)
+    }
+  }, [])
+
   // --- Computed values ---
   const isLoading = session === undefined || questions === undefined
   const joinUrl = session ? `${window.location.origin}/join/${session.code}` : ''
@@ -37,28 +63,39 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
   const isLive = session?.status === 'active'
   const isEnded = session?.status === 'ended'
   const hasData = (stats?.participantCount ?? 0) > 0 || (stats?.responseCount ?? 0) > 0
-  const sortedQuestions = [...(questions ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
+
+  const sortedQuestions = useMemo(() => {
+    const qs = [...(questions ?? [])]
+    if (optimisticOrder) {
+      const orderMap = new Map(optimisticOrder.map((id, i) => [id, i]))
+      return qs.sort((a, b) => (orderMap.get(a._id) ?? 0) - (orderMap.get(b._id) ?? 0))
+    }
+    return qs.sort((a, b) => a.sortOrder - b.sortOrder)
+  }, [questions, optimisticOrder])
 
   // --- Handlers ---
   const handleAddQuestion = async (type: QuestionType) => {
-    const defaultOptions = type === 'multiple_choice' ? ['Option 1', 'Option 2'] : undefined
+    const defaultOptions = type === 'multiple_choice' ? ['', ''] : undefined
     const id = await createQuestion({
       sessionId,
-      title: 'Untitled Question',
+      title: '',
       type,
       options: defaultOptions,
     })
     setEditingQuestion(id as string)
-    setQuestionDraft('Untitled Question')
+    setQuestionDraft('')
     setOptionsDraft(defaultOptions ?? [])
   }
 
   const handleSaveQuestion = async () => {
     if (!editingQuestion) return
+    const title = questionDraft.trim()
+    // Filter out empty options, keep at least the non-empty ones
+    const cleanedOptions = optionsDraft.map(o => o.trim()).filter(Boolean)
     await updateQuestion({
       questionId: editingQuestion as Id<'questions'>,
-      title: questionDraft,
-      options: optionsDraft.length > 0 ? optionsDraft : undefined,
+      title,
+      options: cleanedOptions.length > 0 ? cleanedOptions : undefined,
     })
     setEditingQuestion(null)
   }
@@ -109,6 +146,24 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
   const copyJoinUrl = () => {
     navigator.clipboard.writeText(joinUrl)
     toast.success('Join URL copied!')
+  }
+
+  const handleReorderQuestions = (questionIds: string[]) => {
+    // Optimistic: update UI immediately
+    setOptimisticOrder(questionIds)
+
+    // Safety timeout — clear optimistic state even if server never confirms
+    if (optimisticTimeoutRef.current) clearTimeout(optimisticTimeoutRef.current)
+    optimisticTimeoutRef.current = setTimeout(() => setOptimisticOrder(null), 3000)
+
+    // Fire mutation (don't await — let the subscription handle the real update)
+    reorderQuestions({
+      sessionId,
+      questionIds: questionIds as Id<'questions'>[],
+    }).catch(() => {
+      toast.error('Failed to reorder questions')
+      setOptimisticOrder(null)
+    })
   }
 
   const handleChangeMaxParticipants = (val: number | undefined) => {
@@ -162,6 +217,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     // Question CRUD
     handleAddQuestion,
     handleDeleteQuestion,
+    handleReorderQuestions,
 
     // Delete confirmation
     deletingQuestionId,

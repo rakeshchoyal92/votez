@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { useAuth } from '@/contexts/auth-context'
+import { parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import {
   Plus,
   Trash2,
@@ -17,6 +18,8 @@ import {
   HelpCircle,
   ExternalLink,
   Pencil,
+  Search,
+  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { timeAgo, cn } from '@/lib/utils'
@@ -69,6 +72,16 @@ const STATUS_CONFIG = {
   },
 }
 
+const STATUS_FILTERS = ['all', 'draft', 'active', 'ended'] as const
+type StatusFilter = (typeof STATUS_FILTERS)[number]
+
+const STATUS_FILTER_LABELS: Record<StatusFilter, string> = {
+  all: 'All',
+  draft: 'Drafts',
+  active: 'Live',
+  ended: 'Ended',
+}
+
 interface Session {
   _id: string
   _creationTime: number
@@ -83,6 +96,12 @@ export function DashboardPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [newTitle, setNewTitle] = useState('')
 
+  const [search, setSearch] = useQueryState('q', parseAsString.withDefault(''))
+  const [statusFilter, setStatusFilter] = useQueryState(
+    'status',
+    parseAsStringLiteral(STATUS_FILTERS).withDefault('all')
+  )
+
   const sessions = useQuery(api.sessions.listByPresenter, {
     presenterId: user?.id ?? '',
   })
@@ -96,6 +115,22 @@ export function DashboardPage() {
     title: string
     stats?: { questionCount: number; participantCount: number; responseCount: number }
   } | null>(null)
+
+  const filteredSessions = useMemo(() => {
+    if (!sessions) return undefined
+    return sessions.filter((session) => {
+      if (statusFilter !== 'all' && session.status !== statusFilter) return false
+      if (search && !session.title.toLowerCase().includes(search.toLowerCase())) return false
+      return true
+    })
+  }, [sessions, search, statusFilter])
+
+  const hasActiveFilters = search !== '' || statusFilter !== 'all'
+
+  const clearFilters = () => {
+    setSearch('')
+    setStatusFilter('all')
+  }
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -199,6 +234,55 @@ export function DashboardPage() {
         </Card>
       )}
 
+      {/* Search & filters — only show when sessions exist */}
+      {sessions && sessions.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
+          {/* Search */}
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value || '')}
+              placeholder="Search sessions..."
+              className="pl-9 pr-8"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-sm hover:bg-muted transition-colors"
+              >
+                <X className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            )}
+          </div>
+
+          {/* Status tabs */}
+          <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+            {STATUS_FILTERS.map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={cn(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
+                  statusFilter === status
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {STATUS_FILTER_LABELS[status]}
+              </button>
+            ))}
+          </div>
+
+          {/* Count */}
+          {filteredSessions && (
+            <span className="text-sm text-muted-foreground ml-auto">
+              Showing {filteredSessions.length} of {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Sessions grid */}
       {sessions === undefined ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -236,9 +320,23 @@ export function DashboardPage() {
             New Session
           </Button>
         </div>
+      ) : filteredSessions && filteredSessions.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/60 py-16 sm:py-20 px-6 animate-in fade-in-0 duration-300">
+          <Search className="w-10 h-10 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-1.5">
+            No sessions match your filters
+          </h3>
+          <p className="text-sm text-muted-foreground mb-6 max-w-sm text-center">
+            Try adjusting your search or status filter.
+          </p>
+          <Button variant="outline" onClick={clearFilters} className="gap-2">
+            <X className="w-4 h-4" />
+            Clear filters
+          </Button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in-0 duration-300">
-          {sessions.map((session) => (
+          {(filteredSessions ?? sessions).map((session) => (
             <SessionCard
               key={session._id}
               session={session}

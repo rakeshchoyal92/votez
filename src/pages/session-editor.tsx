@@ -125,6 +125,7 @@ export function SessionEditorPage() {
             onOptionsDraftChange={editor.setOptionsDraft}
             onSaveQuestion={editor.handleSaveQuestion}
             onDeleteQuestion={editor.handleDeleteQuestion}
+            onReorderQuestions={editor.handleReorderQuestions}
           />
         </>
       )}

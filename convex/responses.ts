@@ -65,25 +65,64 @@ export const listByQuestion = query({
   },
 })
 
+// Convex field names must be printable ASCII (0x20-0x7E).
+// User-typed answers can contain em dashes, smart quotes, accented chars, emojis, etc.
+// Sanitize so the counts record serializes safely.
+function safeKey(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // strip combining diacritics: é → e
+    .replace(/[\u2014]/g, '--')      // em dash → --
+    .replace(/[\u2013]/g, '-')       // en dash → -
+    .replace(/[\u2018\u2019]/g, "'") // smart single quotes
+    .replace(/[\u201C\u201D]/g, '"') // smart double quotes
+    .replace(/[\u2026]/g, '...')     // ellipsis
+    .replace(/[^\x20-\x7E]/g, '')    // strip remaining non-ASCII
+}
+
 // Get aggregated results for a question (counts per option)
 export const getResults = query({
   args: { questionId: v.id('questions') },
   handler: async (ctx, args) => {
+    const question = await ctx.db.get(args.questionId)
     const responses = await ctx.db
       .query('responses')
       .withIndex('by_question', (q) => q.eq('questionId', args.questionId))
       .collect()
 
-    // Aggregate counts
+    // Aggregate counts — split comma-separated answers for multi-select
     const counts: Record<string, number> = {}
+    const isMultiSelect = question?.allowMultiple === true
     for (const r of responses) {
-      counts[r.answer] = (counts[r.answer] || 0) + 1
+      if (isMultiSelect && r.answer.includes(',')) {
+        for (const part of r.answer.split(',')) {
+          const trimmed = part.trim()
+          if (trimmed) counts[safeKey(trimmed)] = (counts[safeKey(trimmed)] || 0) + 1
+        }
+      } else {
+        counts[safeKey(r.answer)] = (counts[safeKey(r.answer)] || 0) + 1
+      }
     }
 
     return {
       totalResponses: responses.length,
       counts,
     }
+  },
+})
+
+// Reset (delete) all responses for a question
+export const resetResults = mutation({
+  args: { questionId: v.id('questions') },
+  handler: async (ctx, args) => {
+    const responses = await ctx.db
+      .query('responses')
+      .withIndex('by_question', (q) => q.eq('questionId', args.questionId))
+      .collect()
+    for (const r of responses) {
+      await ctx.db.delete(r._id)
+    }
+    return responses.length
   },
 })
 

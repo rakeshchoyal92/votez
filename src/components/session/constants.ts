@@ -14,6 +14,13 @@ export const QUESTION_TYPES: {
   { type: 'rating', label: 'Rating', icon: Star, description: 'Rate 1-5 stars' },
 ]
 
+export const QUESTION_TYPE_COLORS: Record<QuestionType, string> = {
+  multiple_choice: 'border-l-blue-500',
+  word_cloud: 'border-l-violet-500',
+  open_ended: 'border-l-amber-500',
+  rating: 'border-l-rose-400',
+}
+
 export const STATUS_CONFIG = {
   draft: { label: 'Draft', variant: 'secondary' as const, dot: 'bg-muted-foreground' },
   active: { label: 'Live', variant: 'success' as const, dot: 'bg-green-500' },

@@ -10,6 +10,7 @@ const DashboardPage = React.lazy(() => import('@/pages/dashboard').then(m => ({ 
 const SessionEditorPage = React.lazy(() => import('@/pages/session-editor').then(m => ({ default: m.SessionEditorPage })))
 const SettingsPage = React.lazy(() => import('@/pages/settings').then(m => ({ default: m.SettingsPage })))
 const PresenterPage = React.lazy(() => import('@/pages/presenter').then(m => ({ default: m.PresenterPage })))
+const PreviewPage = React.lazy(() => import('@/pages/preview').then(m => ({ default: m.PreviewPage })))
 const AudiencePage = React.lazy(() => import('@/pages/audience').then(m => ({ default: m.AudiencePage })))
 
 function PageSpinner() {
@@ -52,16 +53,31 @@ export default function App() {
           }
         >
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/session/:sessionId" element={<SessionEditorPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
 
         {/* Protected routes (immersive, own nav) */}
         <Route
+          path="/session/:sessionId"
+          element={
+            <ProtectedRoute>
+              <SessionEditorPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/present/:sessionId"
           element={
             <ProtectedRoute>
               <PresenterPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/preview/:sessionId"
+          element={
+            <ProtectedRoute>
+              <PreviewPage />
             </ProtectedRoute>
           }
         />

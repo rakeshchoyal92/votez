@@ -33,6 +33,10 @@ export const create = mutation({
     ),
     options: v.optional(v.array(v.string())),
     timeLimit: v.optional(v.number()),
+    chartLayout: v.optional(v.union(v.literal('bars'), v.literal('donut'), v.literal('pie'))),
+    allowMultiple: v.optional(v.boolean()),
+    correctAnswer: v.optional(v.string()),
+    showResults: v.optional(v.union(v.literal('always'), v.literal('after_submit'), v.literal('after_close'))),
   },
   handler: async (ctx, args) => {
     const session = await ctx.db.get(args.sessionId)
@@ -54,6 +58,10 @@ export const create = mutation({
       options: args.options,
       sortOrder,
       timeLimit: args.timeLimit,
+      chartLayout: args.chartLayout,
+      allowMultiple: args.allowMultiple,
+      correctAnswer: args.correctAnswer,
+      showResults: args.showResults,
     })
   },
 })
@@ -73,6 +81,10 @@ export const update = mutation({
     ),
     options: v.optional(v.array(v.string())),
     timeLimit: v.optional(v.number()),
+    chartLayout: v.optional(v.union(v.literal('bars'), v.literal('donut'), v.literal('pie'))),
+    allowMultiple: v.optional(v.boolean()),
+    correctAnswer: v.optional(v.string()),
+    showResults: v.optional(v.union(v.literal('always'), v.literal('after_submit'), v.literal('after_close'))),
   },
   handler: async (ctx, args) => {
     const { questionId, ...updates } = args
@@ -83,13 +95,19 @@ export const update = mutation({
       throw new Error('Cannot modify questions — session is not in draft')
     }
 
-    const cleanUpdates: Record<string, unknown> = {}
-    if (updates.title !== undefined) cleanUpdates.title = updates.title
-    if (updates.type !== undefined) cleanUpdates.type = updates.type
-    if (updates.options !== undefined) cleanUpdates.options = updates.options
-    if (updates.timeLimit !== undefined) cleanUpdates.timeLimit = updates.timeLimit
+    const isMC = (updates.type ?? question.type) === 'multiple_choice'
 
-    await ctx.db.patch(questionId, cleanUpdates)
+    await ctx.db.patch(questionId, {
+      ...(updates.title !== undefined && { title: updates.title }),
+      ...(updates.type !== undefined && { type: updates.type }),
+      ...(updates.showResults !== undefined && { showResults: updates.showResults }),
+      ...(updates.timeLimit !== undefined && { timeLimit: updates.timeLimit > 0 ? updates.timeLimit : undefined }),
+      // MC-specific fields: save when MC, clear when not
+      options: isMC ? (updates.options ?? question.options) : undefined,
+      chartLayout: isMC ? (updates.chartLayout ?? question.chartLayout) : undefined,
+      allowMultiple: isMC ? (updates.allowMultiple ?? question.allowMultiple) : undefined,
+      correctAnswer: isMC ? (updates.correctAnswer ?? question.correctAnswer) : undefined,
+    })
   },
 })
 

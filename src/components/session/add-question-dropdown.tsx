@@ -10,7 +10,7 @@ import { QUESTION_TYPES, type QuestionType } from './constants'
 
 interface AddQuestionDropdownProps {
   onAdd: (type: QuestionType) => void
-  variant?: 'default' | 'dashed'
+  variant?: 'default' | 'dashed' | 'slide'
 }
 
 export function AddQuestionDropdown({ onAdd, variant = 'default' }: AddQuestionDropdownProps) {
@@ -25,6 +25,15 @@ export function AddQuestionDropdown({ onAdd, variant = 'default' }: AddQuestionD
             <Plus className="w-4 h-4 mr-2" />
             Add Question
             <ChevronDown className="w-4 h-4 ml-2" />
+          </Button>
+        ) : variant === 'slide' ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full h-8 gap-1.5 text-xs font-medium"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            New slide
           </Button>
         ) : (
           <Button size="sm" className="gap-2 shadow-sm">

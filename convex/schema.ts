@@ -13,6 +13,12 @@ export default defineSchema({
     activeQuestionId: v.optional(v.id('questions')),
     questionStartedAt: v.optional(v.number()), // timestamp when current question was activated
     maxParticipants: v.optional(v.number()), // 0 or undefined = unlimited
+    // Branding
+    brandBgColor: v.optional(v.string()),
+    brandAccentColor: v.optional(v.string()),
+    brandTextColor: v.optional(v.string()),
+    brandLogoId: v.optional(v.string()),             // Convex storage ID
+    brandBackgroundImageId: v.optional(v.string()),   // Convex storage ID
   })
     .index('by_code', ['code'])
     .index('by_presenter', ['presenterId'])
@@ -31,6 +37,14 @@ export default defineSchema({
     options: v.optional(v.array(v.string())), // For multiple_choice
     sortOrder: v.number(),
     timeLimit: v.optional(v.number()), // seconds, 0 = no limit
+    chartLayout: v.optional(v.union(v.literal('bars'), v.literal('donut'), v.literal('pie'))),
+    allowMultiple: v.optional(v.boolean()), // MC multi-select
+    correctAnswer: v.optional(v.string()), // correct option text (for MC)
+    showResults: v.optional(v.union(
+      v.literal('always'),        // show live during voting
+      v.literal('after_submit'),  // show after participant submits
+      v.literal('after_close')    // only show when presenter moves on
+    )),
   }).index('by_session', ['sessionId', 'sortOrder']),
 
   // Audience participants

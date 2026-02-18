@@ -23,7 +23,10 @@ import { Lock, Pencil, Plus } from 'lucide-react'
 import { QuestionCard } from './question-card'
 import { AddQuestionDropdown } from './add-question-dropdown'
 import type { QuestionType } from './constants'
+import type { ChartLayout } from '@/components/chart-type-selector'
 import type { Doc } from '../../../convex/_generated/dataModel'
+
+type ShowResults = 'always' | 'after_submit' | 'after_close'
 
 interface QuestionsSectionProps {
   isEditable: boolean
@@ -42,6 +45,17 @@ interface QuestionsSectionProps {
   onSaveQuestion: () => void
   onDeleteQuestion: (id: string) => void
   onReorderQuestions?: (questionIds: string[]) => void
+  // New field props
+  chartLayoutDraft?: ChartLayout
+  onChartLayoutChange?: (val: ChartLayout) => void
+  allowMultipleDraft?: boolean
+  onAllowMultipleChange?: (val: boolean) => void
+  correctAnswerDraft?: string
+  onCorrectAnswerChange?: (val: string) => void
+  showResultsDraft?: ShowResults
+  onShowResultsChange?: (val: ShowResults) => void
+  timeLimitDraft?: number
+  onTimeLimitChange?: (val: number) => void
 }
 
 export function QuestionsSection({
@@ -61,6 +75,16 @@ export function QuestionsSection({
   onSaveQuestion,
   onDeleteQuestion,
   onReorderQuestions,
+  chartLayoutDraft,
+  onChartLayoutChange,
+  allowMultipleDraft,
+  onAllowMultipleChange,
+  correctAnswerDraft,
+  onCorrectAnswerChange,
+  showResultsDraft,
+  onShowResultsChange,
+  timeLimitDraft,
+  onTimeLimitChange,
 }: QuestionsSectionProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
 
@@ -112,6 +136,19 @@ export function QuestionsSection({
     onOptionsDraftChange,
     onSave: onSaveQuestion,
     onDelete: () => onDeleteQuestion(question._id),
+    // Pass new field props only for the editing question
+    ...(editingQuestion === question._id ? {
+      chartLayoutDraft,
+      onChartLayoutChange,
+      allowMultipleDraft,
+      onAllowMultipleChange,
+      correctAnswerDraft,
+      onCorrectAnswerChange,
+      showResultsDraft,
+      onShowResultsChange,
+      timeLimitDraft,
+      onTimeLimitChange,
+    } : {}),
   })
 
   return (

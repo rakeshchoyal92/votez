@@ -32,6 +32,20 @@ export function getChartColor(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length]
 }
 
+// Sanitize a string for use as a Convex object field key (printable ASCII only).
+// Matches the server-side safeKey in convex/responses.ts.
+export function safeKey(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u2014/g, '--')
+    .replace(/\u2013/g, '-')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2026/g, '...')
+    .replace(/[^\x20-\x7E]/g, '')
+}
+
 // Format relative time
 export function timeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000)

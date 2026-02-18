@@ -48,22 +48,38 @@ export const create = mutation({
   },
 })
 
-// Get session by ID
+// Get session by ID (resolves branding storage URLs)
 export const get = query({
   args: { sessionId: v.id('sessions') },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.sessionId)
+    const session = await ctx.db.get(args.sessionId)
+    if (!session) return null
+    const brandLogoUrl = session.brandLogoId
+      ? await ctx.storage.getUrl(session.brandLogoId)
+      : null
+    const brandBackgroundImageUrl = session.brandBackgroundImageId
+      ? await ctx.storage.getUrl(session.brandBackgroundImageId)
+      : null
+    return { ...session, brandLogoUrl, brandBackgroundImageUrl }
   },
 })
 
-// Get session by join code
+// Get session by join code (resolves branding storage URLs)
 export const getByCode = query({
   args: { code: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const session = await ctx.db
       .query('sessions')
       .withIndex('by_code', (q) => q.eq('code', args.code.toUpperCase()))
       .first()
+    if (!session) return null
+    const brandLogoUrl = session.brandLogoId
+      ? await ctx.storage.getUrl(session.brandLogoId)
+      : null
+    const brandBackgroundImageUrl = session.brandBackgroundImageId
+      ? await ctx.storage.getUrl(session.brandBackgroundImageId)
+      : null
+    return { ...session, brandLogoUrl, brandBackgroundImageUrl }
   },
 })
 
@@ -250,6 +266,11 @@ export const duplicate = mutation({
       presenterName: session.presenterName,
       status: 'draft',
       maxParticipants: session.maxParticipants,
+      brandBgColor: session.brandBgColor,
+      brandAccentColor: session.brandAccentColor,
+      brandTextColor: session.brandTextColor,
+      brandLogoId: session.brandLogoId,
+      brandBackgroundImageId: session.brandBackgroundImageId,
     })
 
     // Copy questions (without responses)
@@ -266,6 +287,10 @@ export const duplicate = mutation({
         options: q.options,
         sortOrder: q.sortOrder,
         timeLimit: q.timeLimit,
+        chartLayout: q.chartLayout,
+        allowMultiple: q.allowMultiple,
+        correctAnswer: q.correctAnswer,
+        showResults: q.showResults,
       })
     }
 
@@ -283,6 +308,101 @@ export const updateMaxParticipants = mutation({
     await ctx.db.patch(args.sessionId, {
       maxParticipants: args.maxParticipants,
     })
+  },
+})
+
+// Update session branding fields
+export const updateBranding = mutation({
+  args: {
+    sessionId: v.id('sessions'),
+    brandBgColor: v.optional(v.string()),
+    brandAccentColor: v.optional(v.string()),
+    brandTextColor: v.optional(v.string()),
+    brandLogoId: v.optional(v.string()),
+    brandBackgroundImageId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { sessionId, ...updates } = args
+    // Only patch fields that were explicitly provided
+    const patch: Record<string, string | undefined> = {}
+    if (updates.brandBgColor !== undefined) patch.brandBgColor = updates.brandBgColor
+    if (updates.brandAccentColor !== undefined) patch.brandAccentColor = updates.brandAccentColor
+    if (updates.brandTextColor !== undefined) patch.brandTextColor = updates.brandTextColor
+    if (updates.brandLogoId !== undefined) patch.brandLogoId = updates.brandLogoId
+    if (updates.brandBackgroundImageId !== undefined) patch.brandBackgroundImageId = updates.brandBackgroundImageId
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(sessionId, patch)
+    }
+  },
+})
+
+// Clear a branding image (delete from storage + clear field)
+export const clearBrandingImage = mutation({
+  args: {
+    sessionId: v.id('sessions'),
+    field: v.union(v.literal('brandLogoId'), v.literal('brandBackgroundImageId')),
+  },
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId)
+    if (!session) return
+    const storageId = session[args.field]
+    if (storageId) {
+      await ctx.storage.delete(storageId)
+    }
+    await ctx.db.patch(args.sessionId, { [args.field]: undefined })
+  },
+})
+
+// Reset session — clear all responses + participants, keep questions
+export const resetSession = mutation({
+  args: { sessionId: v.id('sessions') },
+  handler: async (ctx, args) => {
+    // Clear active question state
+    await ctx.db.patch(args.sessionId, {
+      activeQuestionId: undefined,
+      activeQuestionIndex: undefined,
+      questionStartedAt: undefined,
+    })
+    // Schedule batched deletion of responses + participants
+    await ctx.scheduler.runAfter(0, internal.sessions.resetBatch, {
+      sessionId: args.sessionId,
+    })
+  },
+})
+
+// Internal: delete responses + participants in batches, re-schedule if more remain
+export const resetBatch = internalMutation({
+  args: { sessionId: v.id('sessions') },
+  handler: async (ctx, args) => {
+    // Delete responses in batches
+    const responses = await ctx.db
+      .query('responses')
+      .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
+      .take(DELETE_BATCH_SIZE)
+    for (const r of responses) {
+      await ctx.db.delete(r._id)
+    }
+    if (responses.length === DELETE_BATCH_SIZE) {
+      await ctx.scheduler.runAfter(0, internal.sessions.resetBatch, {
+        sessionId: args.sessionId,
+      })
+      return
+    }
+
+    // Delete participants in batches
+    const participants = await ctx.db
+      .query('participants')
+      .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
+      .take(DELETE_BATCH_SIZE)
+    for (const p of participants) {
+      await ctx.db.delete(p._id)
+    }
+    if (participants.length === DELETE_BATCH_SIZE) {
+      await ctx.scheduler.runAfter(0, internal.sessions.resetBatch, {
+        sessionId: args.sessionId,
+      })
+      return
+    }
   },
 })
 

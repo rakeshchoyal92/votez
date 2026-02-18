@@ -31,11 +31,35 @@ export function WordCloudDisplay({ counts, total, size = 'sm' }: WordCloudDispla
   }, [counts, isLarge])
 
   if (total === 0) {
+    const ghostWords = [
+      { w: 64, fs: isLarge ? 32 : 22 },
+      { w: 40, fs: isLarge ? 18 : 14 },
+      { w: 72, fs: isLarge ? 40 : 28 },
+      { w: 48, fs: isLarge ? 22 : 16 },
+      { w: 56, fs: isLarge ? 28 : 20 },
+      { w: 36, fs: isLarge ? 16 : 12 },
+      { w: 60, fs: isLarge ? 36 : 24 },
+      { w: 44, fs: isLarge ? 20 : 14 },
+    ]
     return (
-      <div className="text-center py-8">
-        <p className={`text-muted-foreground ${isLarge ? 'text-lg' : 'text-sm'}`}>
-          No responses yet
-        </p>
+      <div className={`flex flex-wrap items-center justify-center gap-3 px-4 ${isLarge ? 'py-8' : 'py-4'}`}>
+        {ghostWords.map((g, i) => (
+          <span
+            key={i}
+            className="inline-block animate-hud-ghost-float"
+            style={{ animationDelay: `${i * 350}ms` }}
+          >
+            <span
+              className="block rounded bg-foreground/[0.15]"
+              style={{ width: g.w, height: g.fs * 0.6 }}
+            />
+          </span>
+        ))}
+        <div className="w-full text-center mt-3">
+          <p className={`text-muted-foreground/80 ${isLarge ? 'text-sm' : 'text-xs'} animate-hud-breathe`}>
+            Waiting for responses...
+          </p>
+        </div>
       </div>
     )
   }

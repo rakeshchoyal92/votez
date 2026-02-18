@@ -3,13 +3,13 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
-import { Vote, Loader2, Check, Star, Send, Clock, Timer } from 'lucide-react'
-import { getDeviceId, cn } from '@/lib/utils'
+import { Vote, Loader2, Check, Clock } from 'lucide-react'
+import { getDeviceId } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
+import { AudienceVotingContent } from '@/components/shared'
 
 export function AudiencePage() {
   const { code } = useParams<{ code: string }>()
@@ -83,17 +83,49 @@ export function AudiencePage() {
     }
   }
 
+  // Build audience branding style vars (must be before any early returns that use it)
+  const audienceBrandStyle: React.CSSProperties & Record<string, string> = {}
+  if (session.brandAccentColor) {
+    audienceBrandStyle['--session-accent'] = session.brandAccentColor
+  }
+  if (session.brandBgColor) {
+    audienceBrandStyle.backgroundColor = session.brandBgColor
+  }
+  if (session.brandTextColor) {
+    audienceBrandStyle.color = session.brandTextColor
+  }
+  if (session.brandBackgroundImageUrl) {
+    audienceBrandStyle.backgroundImage = `url(${session.brandBackgroundImageUrl})`
+    audienceBrandStyle.backgroundSize = 'cover'
+    audienceBrandStyle.backgroundPosition = 'center'
+  }
+  const hasAudienceBgImage = !!session.brandBackgroundImageUrl
+
+  // Brand text color helpers for overriding Tailwind text-foreground/text-muted-foreground
+  const brandTextStyle: React.CSSProperties | undefined = session.brandTextColor
+    ? { color: session.brandTextColor }
+    : undefined
+  const brandMutedTextStyle: React.CSSProperties | undefined = session.brandTextColor
+    ? { color: `${session.brandTextColor}99` }
+    : undefined
+
   // Block joining ended sessions (show ended screen even if not joined)
   if (session.status === 'ended') {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in">
-        <div className="w-16 h-16 bg-success/15 rounded-full flex items-center justify-center mb-5">
-          <Check className="w-8 h-8 text-success" />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in relative" style={audienceBrandStyle}>
+        {hasAudienceBgImage && <div className="absolute inset-0 bg-black/40" />}
+        <div className="relative z-10 flex flex-col items-center">
+          {session.brandLogoUrl && (
+            <img src={session.brandLogoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
+          )}
+          <div className="w-16 h-16 bg-success/15 rounded-full flex items-center justify-center mb-5">
+            <Check className="w-8 h-8 text-success" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-2" style={brandTextStyle}>Session ended</h2>
+          <p className="text-muted-foreground text-sm" style={brandMutedTextStyle}>
+            {hasJoined ? 'Thanks for participating!' : 'This session is no longer accepting participants.'}
+          </p>
         </div>
-        <h2 className="text-xl font-bold text-foreground mb-2">Session ended</h2>
-        <p className="text-muted-foreground text-sm">
-          {hasJoined ? 'Thanks for participating!' : 'This session is no longer accepting participants.'}
-        </p>
       </div>
     )
   }
@@ -101,14 +133,19 @@ export function AudiencePage() {
   // Join screen
   if (!hasJoined) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-xs animate-fade-in">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative" style={audienceBrandStyle}>
+        {hasAudienceBgImage && <div className="absolute inset-0 bg-black/40" />}
+        <div className="w-full max-w-xs animate-fade-in relative z-10">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-5">
-              <Vote className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <h2 className="text-2xl font-bold text-foreground mb-1">{session.title}</h2>
-            <p className="text-muted-foreground text-sm">by {session.presenterName}</p>
+            {session.brandLogoUrl ? (
+              <img src={session.brandLogoUrl} alt="Logo" className="h-12 w-auto object-contain mb-5" />
+            ) : (
+              <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-5">
+                <Vote className="w-6 h-6 text-primary-foreground" />
+              </div>
+            )}
+            <h2 className="text-2xl font-bold text-foreground mb-1" style={brandTextStyle}>{session.title}</h2>
+            <p className="text-muted-foreground text-sm" style={brandMutedTextStyle}>by {session.presenterName}</p>
           </div>
 
           <Card className="p-5 shadow-sm border-border/50">
@@ -133,28 +170,39 @@ export function AudiencePage() {
   // Waiting / Active / Ended states
   if (session.status === 'draft') {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative" style={audienceBrandStyle}>
+        {hasAudienceBgImage && <div className="absolute inset-0 bg-black/40" />}
+        <div className="relative z-10 flex flex-col items-center">
+        {session.brandLogoUrl && (
+          <img src={session.brandLogoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
+        )}
         <div className="animate-pulse-soft">
-          <Clock className="w-14 h-14 text-primary/30 mx-auto mb-5" />
+          <Clock className="w-14 h-14 text-primary/70 mx-auto mb-5" />
         </div>
-        <h2 className="text-xl font-bold text-foreground mb-2">Waiting to start...</h2>
-        <p className="text-muted-foreground text-sm">The presenter hasn't started yet</p>
+        <h2 className="text-xl font-bold text-foreground mb-2" style={brandTextStyle}>Waiting to start...</h2>
+        <p className="text-muted-foreground text-sm" style={brandMutedTextStyle}>The presenter hasn't started yet</p>
+        </div>
       </div>
     )
   }
 
   // Active — show the current question for voting
   return (
-    <ActiveQuestionVoter
-      sessionId={session._id}
-      participantId={participantId as Id<'participants'>}
-      activeQuestionId={session.activeQuestionId}
-      questionStartedAt={session.questionStartedAt}
-    />
+    <div style={audienceBrandStyle}>
+      <ActiveQuestionVoter
+        sessionId={session._id}
+        participantId={participantId as Id<'participants'>}
+        activeQuestionId={session.activeQuestionId}
+        questionStartedAt={session.questionStartedAt}
+      />
+    </div>
   )
 }
 
-// Voter component for active question
+/**
+ * Thin wrapper: manages Convex queries/mutations, timer, and submitted state.
+ * Delegates all rendering to the shared AudienceVotingContent component.
+ */
 function ActiveQuestionVoter({
   sessionId,
   participantId,
@@ -168,10 +216,8 @@ function ActiveQuestionVoter({
 }) {
   const questions = useQuery(api.questions.listBySession, { sessionId })
   const submitResponse = useMutation(api.responses.submit)
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
+
   const [submitted, setSubmitted] = useState(false)
-  const [openText, setOpenText] = useState('')
-  const [rating, setRating] = useState(0)
   const [timeUp, setTimeUp] = useState(false)
   const [remaining, setRemaining] = useState<number | null>(null)
 
@@ -183,12 +229,19 @@ function ActiveQuestionVoter({
     ? sortedQuestions.findIndex((q) => q._id === question._id)
     : -1
 
+  const showResults = question?.showResults ?? 'always'
+
+  // Fetch results for post-submit display when showResults === 'after_submit'
+  const submittedResultsQuery = useQuery(
+    api.responses.getResults,
+    submitted && showResults === 'after_submit' && question
+      ? { questionId: question._id }
+      : 'skip'
+  )
+
   // Reset state when question changes
   useEffect(() => {
-    setSelectedAnswer(null)
     setSubmitted(false)
-    setOpenText('')
-    setRating(0)
     setTimeUp(false)
     setRemaining(null)
   }, [question?._id])
@@ -215,7 +268,7 @@ function ActiveQuestionVoter({
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
         <div className="animate-pulse-soft">
-          <Clock className="w-14 h-14 text-primary/30 mx-auto mb-5" />
+          <Clock className="w-14 h-14 text-primary/70 mx-auto mb-5" />
         </div>
         <h2 className="text-lg font-semibold text-foreground mb-2">
           Get ready...
@@ -233,7 +286,6 @@ function ActiveQuestionVoter({
         participantId,
         answer,
       })
-      setSelectedAnswer(answer)
       setSubmitted(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to submit'
@@ -247,168 +299,18 @@ function ActiveQuestionVoter({
     }
   }
 
-  if (timeUp && !submitted) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in">
-        <div className="w-18 h-18 bg-amber-500/15 rounded-full flex items-center justify-center mb-5 p-4">
-          <Timer className="w-10 h-10 text-amber-500" />
-        </div>
-        <h2 className="text-xl font-bold text-foreground mb-2">Time&apos;s up!</h2>
-        <p className="text-muted-foreground text-sm">Waiting for next question...</p>
-      </div>
-    )
-  }
-
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in">
-        <div className="w-18 h-18 bg-success/15 rounded-full flex items-center justify-center mb-5 p-4">
-          <Check className="w-10 h-10 text-success" />
-        </div>
-        <h2 className="text-xl font-bold text-foreground mb-2">Submitted!</h2>
-        <p className="text-muted-foreground text-sm">Waiting for next question...</p>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-background flex flex-col p-6">
-      {/* Question */}
-      <div className="flex-1 flex flex-col items-center justify-center max-w-lg mx-auto w-full">
-        <p className="text-xs text-primary font-semibold mb-3 uppercase tracking-widest">
-          Question {activeQuestionIndex >= 0 ? activeQuestionIndex + 1 : 1}
-        </p>
-        <h2 className="text-2xl font-bold text-foreground text-center mb-4 leading-snug">
-          {question.title}
-        </h2>
-
-        {remaining !== null && remaining > 0 && (
-          <div className="flex items-center justify-center gap-1.5 mb-4">
-            <Timer className={cn('w-4 h-4', remaining <= 5 ? 'text-amber-500' : 'text-muted-foreground')} />
-            <span className={cn(
-              'text-sm font-mono font-semibold tabular-nums',
-              remaining <= 5 ? 'text-amber-500' : 'text-muted-foreground'
-            )}>
-              {remaining}s
-            </span>
-          </div>
-        )}
-
-        {remaining === null && <div className="mb-4" />}
-
-        {/* Multiple Choice */}
-        {question.type === 'multiple_choice' && question.options && (
-          <div className="w-full space-y-3 stagger-children">
-            {question.options.map((option, i) => (
-              <Button
-                key={i}
-                variant="outline"
-                onClick={() => handleSubmit(option)}
-                className={cn(
-                  'w-full py-4 px-5 h-auto rounded-xl text-left justify-start font-medium text-lg border-2 transition-all',
-                  selectedAnswer === option
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border text-foreground hover:border-primary/30 active:scale-[0.98]'
-                )}
-              >
-                {option}
-              </Button>
-            ))}
-          </div>
-        )}
-
-        {/* Word Cloud */}
-        {question.type === 'word_cloud' && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (openText.trim()) handleSubmit(openText.trim())
-            }}
-            className="w-full flex gap-2"
-          >
-            <Input
-              type="text"
-              value={openText}
-              onChange={(e) => setOpenText(e.target.value)}
-              placeholder="Type a word or phrase..."
-              maxLength={50}
-              autoFocus
-              className="flex-1 h-12 text-lg"
-            />
-            <Button
-              type="submit"
-              disabled={!openText.trim()}
-              size="lg"
-              className="h-12"
-            >
-              <Send className="w-5 h-5" />
-            </Button>
-          </form>
-        )}
-
-        {/* Open Ended */}
-        {question.type === 'open_ended' && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (openText.trim()) handleSubmit(openText.trim())
-            }}
-            className="w-full space-y-3"
-          >
-            <Textarea
-              value={openText}
-              onChange={(e) => setOpenText(e.target.value)}
-              placeholder="Type your answer..."
-              rows={3}
-              autoFocus
-              className="text-lg resize-none"
-            />
-            <Button
-              type="submit"
-              disabled={!openText.trim()}
-              className="w-full h-12"
-            >
-              <Send className="w-4 h-4" />
-              Submit
-            </Button>
-          </form>
-        )}
-
-        {/* Rating */}
-        {question.type === 'rating' && (
-          <div className="space-y-6 text-center">
-            <div className="flex items-center justify-center gap-3">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Button
-                  key={star}
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setRating(star)}
-                  className="h-14 w-14 transition-transform active:scale-90"
-                >
-                  <Star
-                    className={cn(
-                      'w-12 h-12 transition-colors',
-                      star <= rating
-                        ? 'fill-star text-star'
-                        : 'text-muted-foreground/30'
-                    )}
-                  />
-                </Button>
-              ))}
-            </div>
-            {rating > 0 && (
-              <Button
-                size="lg"
-                onClick={() => handleSubmit(String(rating))}
-                className="animate-fade-in shadow-sm"
-              >
-                Submit Rating
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+    <AudienceVotingContent
+      question={question}
+      questionIndex={activeQuestionIndex >= 0 ? activeQuestionIndex : 0}
+      onSubmit={handleSubmit}
+      isSubmitted={submitted}
+      remainingSeconds={remaining}
+      isTimeUp={timeUp}
+      submittedResults={submittedResultsQuery ?? null}
+      totalQuestions={sortedQuestions.length}
+      totalSeconds={question.timeLimit && question.timeLimit > 0 ? question.timeLimit : undefined}
+      size="full"
+    />
   )
 }

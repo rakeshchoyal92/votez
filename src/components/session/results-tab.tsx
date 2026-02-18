@@ -33,6 +33,8 @@ export function ResultsSection({ sortedQuestions }: ResultsSectionProps) {
           type={question.type}
           options={question.options}
           index={index}
+          chartLayout={question.chartLayout}
+          correctAnswer={question.correctAnswer}
         />
       ))}
     </div>

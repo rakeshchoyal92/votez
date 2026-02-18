@@ -431,7 +431,7 @@ function FullPresenterView({
               {activeQuestion ? (
                 <div
                   className={cn(
-                    "w-full max-w-5xl flex flex-col flex-1 min-h-0",
+                    "w-full max-w-7xl flex flex-col flex-1 min-h-0",
                     hasCustomBg && "bg-white/[0.06] backdrop-blur-sm border border-white/[0.08] rounded-3xl px-8 py-6"
                   )}
                 >

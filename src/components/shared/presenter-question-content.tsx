@@ -91,7 +91,7 @@ export function PresenterQuestionContent({
   // animate-fade-in re-triggers on question change via key prop from parent.
   const stableClass = cn(
     'w-full flex flex-col animate-fade-in',
-    sm ? 'max-w-[600px] flex-1 min-h-0' : 'max-w-4xl flex-1 min-h-0'
+    sm ? 'max-w-[600px] flex-1 min-h-0' : 'max-w-6xl flex-1 min-h-0'
   )
 
   // Show unified skeleton while query is loading (results not yet returned)

@@ -207,6 +207,17 @@ export function AudiencePage() {
   )
 }
 
+function buildBrandStyle(b: AudienceBranding): React.CSSProperties | undefined {
+  const s: React.CSSProperties = {}
+  if (b.bgColor) s.backgroundColor = b.bgColor
+  if (b.backgroundImageUrl) {
+    s.backgroundImage = `url(${b.backgroundImageUrl})`
+    s.backgroundSize = 'cover'
+    s.backgroundPosition = 'center'
+  }
+  return Object.keys(s).length > 0 ? s : undefined
+}
+
 /**
  * Thin wrapper: manages Convex queries/mutations, timer, and submitted state.
  * Delegates all rendering to the shared AudienceVotingContent component.
@@ -275,15 +286,25 @@ function ActiveQuestionVoter({
   }, [question?.timeLimit, questionStartedAt, question?._id])
 
   if (!question) {
+    const brandBg = branding ? buildBrandStyle(branding) : undefined
+    const hasBgImg = !!branding?.backgroundImageUrl
+    const txtStyle: React.CSSProperties | undefined = branding?.textColor ? { color: branding.textColor } : undefined
+    const mutedStyle: React.CSSProperties | undefined = branding?.textColor ? { color: `${branding.textColor}99` } : undefined
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-        <div className="animate-pulse-soft">
-          <Clock className="w-14 h-14 text-primary/70 mx-auto mb-5" />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative" style={brandBg}>
+        {hasBgImg && <div className="absolute inset-0 bg-black/40" />}
+        <div className="relative z-10 flex flex-col items-center">
+          {branding?.logoUrl && (
+            <img src={branding.logoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
+          )}
+          <div className="animate-pulse-soft">
+            <Clock className="w-14 h-14 text-primary/70 mx-auto mb-5" />
+          </div>
+          <h2 className="text-lg font-semibold text-foreground mb-2" style={txtStyle}>
+            Get ready...
+          </h2>
+          <p className="text-muted-foreground text-sm" style={mutedStyle}>Next question coming up</p>
         </div>
-        <h2 className="text-lg font-semibold text-foreground mb-2">
-          Get ready...
-        </h2>
-        <p className="text-muted-foreground text-sm">Next question coming up</p>
       </div>
     )
   }

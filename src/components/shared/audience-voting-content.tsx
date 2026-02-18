@@ -530,13 +530,13 @@ function FullVoting({
   const brandTextStyle: React.CSSProperties | undefined = branding?.textColor ? { color: branding.textColor } : undefined
 
   return (
-    <div key={question._id} className="min-h-screen bg-background flex flex-col p-6 animate-fade-in relative" style={brandBg}>
+    <div key={question._id} className="min-h-screen bg-background flex flex-col px-4 py-6 sm:p-8 animate-fade-in relative" style={brandBg}>
       {hasBgImg && <div className="absolute inset-0 bg-black/40" />}
 
       {/* Top edge: timer bar (timed) or progress bar (untimed) */}
       {isTimed ? (
         <div className="fixed top-0 left-0 right-0 z-50">
-          <div className="h-1 w-full overflow-hidden bg-muted/30">
+          <div className="h-1.5 sm:h-1 w-full overflow-hidden bg-muted/30">
             {isDone ? (
               <div className="h-full" />
             ) : (
@@ -552,7 +552,7 @@ function FullVoting({
           <div className="flex justify-end px-3 pt-1.5">
             <span
               className={cn(
-                'font-mono font-semibold tabular-nums text-[10px] rounded-full border px-2 py-0.5 backdrop-blur-sm bg-background/60',
+                'font-mono font-semibold tabular-nums text-xs sm:text-[10px] rounded-full border px-2.5 py-1 sm:px-2 sm:py-0.5 backdrop-blur-sm bg-background/60',
                 badgeClass,
                 isUrgent && 'animate-pulse'
               )}
@@ -562,7 +562,7 @@ function FullVoting({
           </div>
         </div>
       ) : totalQuestions ? (
-        <div className="fixed top-0 left-0 right-0 h-1 z-50 bg-muted/30">
+        <div className="fixed top-0 left-0 right-0 h-1.5 sm:h-1 z-50 bg-muted/30">
           <div
             className="h-full bg-primary/60 transition-all duration-500 rounded-r-full"
             style={{ width: `${progressFraction * 100}%` }}
@@ -572,16 +572,14 @@ function FullVoting({
 
       <div className="flex-1 flex flex-col items-center justify-center max-w-lg mx-auto w-full relative z-10">
         {branding?.logoUrl && (
-          <img src={branding.logoUrl} alt="Logo" className="h-10 w-auto object-contain mb-5" />
+          <img src={branding.logoUrl} alt="Logo" className="h-10 sm:h-12 w-auto object-contain mb-5" />
         )}
-        <p className="text-xs text-primary font-semibold mb-3 uppercase tracking-widest">
+        <p className="text-sm sm:text-xs text-primary font-semibold mb-2 uppercase tracking-widest">
           Question {questionIndex + 1}{totalQuestions ? ` of ${totalQuestions}` : ''}
         </p>
-        <h2 className="text-2xl font-bold text-foreground text-center mb-4 leading-snug" style={brandTextStyle}>
+        <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-6 leading-snug" style={brandTextStyle}>
           {question.title}
         </h2>
-
-        <div className="mb-4" />
 
         {/* MC — single select */}
         {question.type === 'multiple_choice' && question.options && !isMultiSelect && (
@@ -591,7 +589,7 @@ function FullVoting({
                 key={i}
                 variant="outline"
                 onClick={() => onSubmit(option)}
-                className="w-full py-4 px-5 h-auto rounded-xl text-left justify-start font-medium text-lg border-2 border-border text-foreground hover:border-primary/30 active:scale-[0.98] transition-all"
+                className="w-full min-h-[56px] py-4 px-5 h-auto rounded-xl text-left justify-start font-medium text-base sm:text-lg border-2 border-border text-foreground hover:border-primary/30 active:scale-[0.98] transition-all"
               >
                 {option}
               </Button>
@@ -602,7 +600,7 @@ function FullVoting({
         {/* MC — multi select */}
         {question.type === 'multiple_choice' && question.options && isMultiSelect && (
           <div className="w-full space-y-3">
-            <p className="text-xs text-muted-foreground text-center mb-1">Select one or more options</p>
+            <p className="text-sm text-muted-foreground text-center mb-1">Select one or more options</p>
             <div className="space-y-3 stagger-children">
               {question.options.map((option, i) => {
                 const isSelected = selectedMultiple.has(option)
@@ -612,7 +610,7 @@ function FullVoting({
                     type="button"
                     onClick={() => onToggleMulti(option)}
                     className={cn(
-                      'w-full py-4 px-5 rounded-xl text-left font-medium text-lg border-2 transition-all flex items-center gap-3',
+                      'w-full min-h-[56px] py-4 px-5 rounded-xl text-left font-medium text-base sm:text-lg border-2 transition-all flex items-center gap-3',
                       isSelected
                         ? 'border-primary bg-primary/10 text-primary'
                         : 'border-border text-foreground hover:border-primary/30 active:scale-[0.98]'
@@ -631,7 +629,7 @@ function FullVoting({
             <Button
               onClick={onMultiSubmit}
               disabled={selectedMultiple.size === 0}
-              className="w-full h-12 text-base font-medium mt-4"
+              className="w-full h-14 text-base font-medium mt-4"
             >
               <Send className="w-4 h-4 mr-2" />
               Submit ({selectedMultiple.size} selected)
@@ -655,13 +653,13 @@ function FullVoting({
               placeholder="Type a word or phrase..."
               maxLength={50}
               autoFocus
-              className="flex-1 h-12 text-lg"
+              className="flex-1 h-14 text-lg"
             />
             <Button
               type="submit"
               disabled={!openText.trim()}
               size="lg"
-              className="h-12"
+              className="h-14 px-5"
             >
               <Send className="w-5 h-5" />
             </Button>
@@ -681,16 +679,16 @@ function FullVoting({
               value={openText}
               onChange={(e) => onSetOpenText(e.target.value)}
               placeholder="Type your answer..."
-              rows={3}
+              rows={4}
               autoFocus
-              className="text-lg resize-none"
+              className="text-lg resize-none min-h-[120px]"
             />
             <Button
               type="submit"
               disabled={!openText.trim()}
-              className="w-full h-12"
+              className="w-full h-14 text-base"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-4 h-4 mr-2" />
               Submit
             </Button>
           </form>
@@ -698,35 +696,36 @@ function FullVoting({
 
         {/* Rating */}
         {question.type === 'rating' && (
-          <div className="space-y-6 text-center">
-            <div className="flex items-center justify-center gap-3">
+          <div className="space-y-8 text-center w-full">
+            <div className="flex items-center justify-center gap-2 sm:gap-3">
               {[1, 2, 3, 4, 5].map((star) => (
-                <Button
+                <button
                   key={star}
-                  variant="ghost"
-                  size="icon"
+                  type="button"
                   onClick={() => onSetRating(star)}
-                  className="h-14 w-14 transition-transform active:scale-90"
+                  className="p-1.5 sm:p-2 transition-transform active:scale-90"
                 >
                   <Star
                     className={cn(
-                      'w-12 h-12 transition-colors',
+                      'w-12 h-12 sm:w-14 sm:h-14 transition-colors',
                       star <= rating
                         ? 'fill-star text-star'
-                        : 'text-muted-foreground/30'
+                        : 'text-muted-foreground/20'
                     )}
                   />
-                </Button>
+                </button>
               ))}
             </div>
-            {rating > 0 && (
+            {rating > 0 ? (
               <Button
                 size="lg"
                 onClick={() => onSubmit(String(rating))}
-                className="animate-fade-in shadow-sm"
+                className="animate-fade-in shadow-sm h-14 px-10 text-base"
               >
                 Submit Rating
               </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">Tap a star to rate</p>
             )}
           </div>
         )}

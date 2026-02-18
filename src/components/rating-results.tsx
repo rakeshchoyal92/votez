@@ -1,5 +1,6 @@
 import { Star } from 'lucide-react'
 import { cn, getChartColor } from '@/lib/utils'
+import { WaitingForResponses } from './waiting-for-responses'
 
 interface RatingResultsProps {
   counts: Record<string, number>
@@ -12,70 +13,7 @@ export function RatingResults({ counts, total, size = 'lg' }: RatingResultsProps
   const sm = size === 'sm'
 
   if (total === 0) {
-    const ghostBarWidths = [30, 20, 50, 35, 70]
-    return (
-      <div className={cn('mx-auto', sm ? 'space-y-4 max-w-xs' : 'space-y-6 max-w-md')}>
-        {/* Ghost average display */}
-        <div className={cn('text-center', !sm && 'py-4')}>
-          <div className={cn('inline-flex items-baseline', sm ? 'gap-1.5' : 'gap-2 mb-3')}>
-            <span className={cn('font-bold text-foreground/[0.40] tabular-nums', sm ? 'text-4xl' : 'text-5xl')}>
-              &mdash;
-            </span>
-          </div>
-
-          {/* Scanning star wave */}
-          <div className={cn('flex items-center justify-center', sm ? 'gap-0.5 mt-1' : 'gap-1')}>
-            {[1, 2, 3, 4, 5].map((s) => (
-              <Star
-                key={s}
-                className={cn(
-                  'animate-hud-star-scan text-amber-400',
-                  sm ? 'w-4 h-4' : 'w-5 h-5'
-                )}
-                style={{ animationDelay: `${(s - 1) * 400}ms` }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Ghost distribution bars */}
-        <div className={sm ? 'space-y-1' : 'space-y-3'}>
-          {[5, 4, 3, 2, 1].map((star, i) => (
-            <div key={star} className={cn('flex items-center', sm ? 'gap-1.5' : 'gap-3')}>
-              <div
-                className={cn(
-                  'flex items-center gap-0.5 justify-end flex-shrink-0',
-                  sm ? 'w-7' : 'w-14'
-                )}
-              >
-                <span className={cn('font-medium text-foreground/[0.40] tabular-nums', sm ? 'text-[10px]' : 'text-sm')}>
-                  {star}
-                </span>
-                <Star className={cn('text-foreground/[0.35]', sm ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5')} />
-              </div>
-
-              <div
-                className={cn(
-                  'flex-1 rounded-lg overflow-hidden',
-                  sm ? 'h-3.5' : 'h-6'
-                )}
-              >
-                <div
-                  className="h-full rounded-lg animate-hud-bar-sweep"
-                  style={{ width: `${ghostBarWidths[i]}%`, animationDelay: `${i * 300}ms` }}
-                />
-              </div>
-
-              <span className={cn('text-foreground/[0.25] text-right tabular-nums', sm ? 'text-[10px] w-5' : 'text-sm w-20')} />
-            </div>
-          ))}
-        </div>
-
-        <p className={cn('text-center text-muted-foreground/80', sm ? 'text-xs' : 'text-sm', 'animate-hud-breathe')}>
-          Waiting for ratings...
-        </p>
-      </div>
-    )
+    return <WaitingForResponses size={size} />
   }
 
   let sum = 0

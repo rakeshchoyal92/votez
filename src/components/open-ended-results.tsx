@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { WaitingForResponses } from './waiting-for-responses'
 
 interface OpenEndedResultsProps {
   counts: Record<string, number>
@@ -12,43 +13,7 @@ export function OpenEndedResults({ counts, total, size = 'lg' }: OpenEndedResult
   const sm = size === 'sm'
 
   if (total === 0) {
-    const rowWidths = sm ? ['75%', '55%', '65%', '45%'] : ['80%', '55%', '70%', '45%']
-    return (
-      <div className={cn('mx-auto', sm ? 'py-8 max-w-md' : 'py-10 max-w-lg')}>
-        <div className={cn('space-y-3', sm && 'space-y-2')}>
-          {rowWidths.map((w, i) => (
-            <div
-              key={i}
-              className={cn(
-                'relative flex items-center rounded-lg overflow-hidden',
-                sm ? 'h-10' : 'h-12'
-              )}
-              style={{ width: w }}
-            >
-              {/* Left-edge accent glow */}
-              <div
-                className="absolute inset-y-0 left-0 w-[2px] bg-foreground/30 animate-hud-glow-line"
-                style={{ animationDelay: `${i * 300}ms` }}
-              />
-
-              {/* Base row */}
-              <div
-                className="absolute inset-0 bg-foreground/[0.25] animate-hud-breathe"
-                style={{ animationDelay: `${i * 400}ms` }}
-              />
-
-              {/* Blinking cursor on first row */}
-              {i === 0 && (
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 w-[2px] h-[55%] bg-foreground/50 animate-hud-cursor-blink" />
-              )}
-            </div>
-          ))}
-        </div>
-        <p className={cn('text-center text-muted-foreground/80 mt-5', sm ? 'text-xs' : 'text-sm', 'animate-hud-breathe')}>
-          Waiting for responses...
-        </p>
-      </div>
-    )
+    return <WaitingForResponses size={size} />
   }
 
   const entries = Object.entries(counts)

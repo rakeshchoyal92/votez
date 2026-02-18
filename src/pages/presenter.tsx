@@ -15,6 +15,7 @@ import {
 import { toast } from 'sonner'
 import { PresenterView } from '@/components/shared'
 import type { SessionBranding } from '@/components/shared'
+import type { ThemePreset } from '@/components/shared/presenter-view'
 import { useReactions } from '@/hooks/useReactions'
 import type { ReactionType } from '@/hooks/useReactions'
 import type { TimerStyle } from '@/components/presenter-timer'
@@ -59,6 +60,7 @@ export function PresenterPage() {
   const [chartOverride, setChartOverride] = useState<ChartLayout | null>(null)
   const [timerStyle, setTimerStyle] = useState<TimerStyle>('edge')
   const [autoAdvance, setAutoAdvance] = useState(true)
+  const [themeOverride, setThemeOverride] = useState<ThemePreset | null>(null)
   const [showShortcutOverlay, setShowShortcutOverlay] = useState(false)
 
   // Reactions (must be called unconditionally)
@@ -81,13 +83,13 @@ export function PresenterPage() {
   const effectiveLayout: ChartLayout =
     chartOverride ?? (activeQuestion?.chartLayout as ChartLayout) ?? 'bars'
 
-  // Build branding object from session
+  // Build branding object from session, with local theme override
   const branding: SessionBranding | undefined = session ? {
-    brandBgColor: session.brandBgColor,
-    brandAccentColor: session.brandAccentColor,
-    brandTextColor: session.brandTextColor,
+    brandBgColor: themeOverride?.bg ?? session.brandBgColor,
+    brandAccentColor: themeOverride?.accent ?? session.brandAccentColor,
+    brandTextColor: themeOverride?.text ?? session.brandTextColor,
     brandLogoUrl: session.brandLogoUrl,
-    brandBackgroundImageUrl: session.brandBackgroundImageUrl,
+    brandBackgroundImageUrl: themeOverride ? undefined : session.brandBackgroundImageUrl,
   } : undefined
 
   // Live results for active question
@@ -346,6 +348,8 @@ export function PresenterPage() {
         onNavigateBack={() => navigate(`/session/${sessionId}`)}
         onTogglePercentages={() => setShowPercentages(!showPercentages)}
         onChartOverride={setChartOverride}
+        onThemeOverride={setThemeOverride}
+        activeThemePreset={themeOverride?.name ?? null}
         onResetResults={handleResetResults}
       />
       {showShortcutOverlay && (

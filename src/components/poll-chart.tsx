@@ -13,6 +13,7 @@ import {
 import { CheckCircle2 } from 'lucide-react'
 import { getChartColor, safeKey } from '@/lib/utils'
 import type { ChartLayout } from './chart-type-selector'
+import { WaitingForResponses } from './waiting-for-responses'
 
 interface PollChartProps {
   options: string[]
@@ -38,41 +39,7 @@ export function PollChart({
   showEmpty = false,
 }: PollChartProps) {
   if (total === 0 && !showEmpty) {
-    const barHeights = [40, 25, 60, 35]
-    const height = size === 'lg' ? 350 : 220
-    return (
-      <div className="w-full relative" style={{ height }}>
-        {/* Ghost bars */}
-        <div className="absolute inset-0 flex items-end justify-center gap-6 px-12 pb-10">
-          {barHeights.map((h, i) => (
-            <div key={i} className="flex flex-col items-center gap-2.5 flex-1 max-w-20 h-full justify-end">
-              <div
-                className="w-full rounded-t-md bg-foreground/[0.12] animate-hud-bar-sweep"
-                style={{ height: `${h}%`, animationDelay: `${i * 400}ms` }}
-              />
-              {/* Ghost x-axis label */}
-              <div
-                className="h-2 rounded-full bg-foreground/[0.25] animate-hud-breathe"
-                style={{ width: `${50 + i * 8}%`, animationDelay: `${i * 300}ms` }}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Baseline glow */}
-        <div
-          className="absolute left-8 right-8 bottom-10 h-px animate-hud-baseline-glow"
-          style={{ background: 'hsl(var(--foreground) / 0.15)', boxShadow: '0 0 8px hsl(var(--foreground) / 0.1)' }}
-        />
-
-        {/* Center text */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <p className={`text-muted-foreground/80 ${size === 'lg' ? 'text-sm' : 'text-xs'} animate-hud-breathe`}>
-            Waiting for votes...
-          </p>
-        </div>
-      </div>
-    )
+    return <WaitingForResponses size={size} />
   }
 
   const data = options.map((option, i) => {

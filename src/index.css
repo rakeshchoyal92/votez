@@ -379,6 +379,33 @@
   animation: hud-star-scan 2.5s ease-in-out infinite;
 }
 
+/* Spinning arc for waiting indicator */
+@keyframes hud-arc-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-hud-arc-spin {
+  animation: hud-arc-spin 1.2s linear infinite;
+}
+
+/* Sonar ripple — expand outward and fade */
+@keyframes hud-sonar {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.animate-hud-sonar {
+  animation: hud-sonar 3s ease-out infinite;
+}
+
+/* Glowing core dot — breathe + glow (hardcoded white for universal bg) */
+@keyframes hud-core-pulse {
+  0%, 100% { opacity: 0.4; box-shadow: 0 0 6px 2px rgba(255,255,255,0.15); }
+  50%      { opacity: 1;   box-shadow: 0 0 14px 5px rgba(255,255,255,0.3); }
+}
+.animate-hud-core-pulse {
+  animation: hud-core-pulse 2s ease-in-out infinite;
+}
+
 /* Universal slow opacity breathe */
 @keyframes hud-breathe {
   0%, 100% { opacity: 0.55; }

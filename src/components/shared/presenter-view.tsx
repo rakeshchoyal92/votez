@@ -45,6 +45,27 @@ import {
 } from '@/components/ui/tooltip'
 import { PresenterTimer, TimerOverlay } from '@/components/presenter-timer'
 import type { TimerStyle } from '@/components/presenter-timer'
+import { Palette } from 'lucide-react'
+
+export interface ThemePreset {
+  name: string
+  bg: string
+  accent: string
+  text: string
+}
+
+export const THEME_PRESETS: ThemePreset[] = [
+  { name: 'Midnight', bg: '#1e293b', accent: '#6366f1', text: '#ffffff' },
+  { name: 'Ocean', bg: '#0c1929', accent: '#06b6d4', text: '#e0f2fe' },
+  { name: 'Sunset', bg: '#1c1412', accent: '#f97316', text: '#fef3c7' },
+  { name: 'Forest', bg: '#0a1f14', accent: '#10b981', text: '#d1fae5' },
+  { name: 'Berry', bg: '#1a0a24', accent: '#d946ef', text: '#fae8ff' },
+  { name: 'Ember', bg: '#1a1110', accent: '#ef4444', text: '#fecaca' },
+  { name: 'Gold', bg: '#1a1508', accent: '#eab308', text: '#fef9c3' },
+  { name: 'Arctic', bg: '#0f172a', accent: '#38bdf8', text: '#f0f9ff' },
+  { name: 'Neon', bg: '#0a0a0a', accent: '#22c55e', text: '#bbf7d0' },
+  { name: 'Rose', bg: '#1c0f14', accent: '#f43f5e', text: '#ffe4e6' },
+]
 
 interface PresenterViewQuestion {
   _id: string
@@ -105,6 +126,8 @@ export interface PresenterViewProps {
   onNavigateBack?: () => void
   onTogglePercentages?: () => void
   onChartOverride?: (layout: ChartLayout | null) => void
+  onThemeOverride?: (preset: ThemePreset | null) => void
+  activeThemePreset?: string | null
   onResetResults?: () => void
 }
 
@@ -146,11 +169,13 @@ function PresenterMenuItems({
   chartLayout,
   timerStyle,
   autoAdvance,
+  activeThemePreset,
   onTogglePercentages,
   onChartOverride,
   onToggleQR,
   onTimerStyleChange,
   onToggleAutoAdvance,
+  onThemeOverride,
   onResetResults,
   onEnd,
 }: Pick<
@@ -161,11 +186,13 @@ function PresenterMenuItems({
   | 'chartLayout'
   | 'timerStyle'
   | 'autoAdvance'
+  | 'activeThemePreset'
   | 'onTogglePercentages'
   | 'onChartOverride'
   | 'onToggleQR'
   | 'onTimerStyleChange'
   | 'onToggleAutoAdvance'
+  | 'onThemeOverride'
   | 'onResetResults'
   | 'onEnd'
 >) {
@@ -247,6 +274,38 @@ function PresenterMenuItems({
         {showQRSidebar ? 'Hide' : 'Show'} QR Sidebar
       </DropdownMenuItem>
 
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger disabled={!onThemeOverride}>
+          <Palette className="w-4 h-4 mr-2" />
+          Theme
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="w-44">
+          <DropdownMenuItem
+            onClick={() => onThemeOverride?.(null)}
+            disabled={!onThemeOverride}
+          >
+            <RotateCcw className="w-3.5 h-3.5 mr-2" />
+            Session Default
+            {!activeThemePreset && <CheckIcon className="w-3 h-3 ml-auto" />}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {THEME_PRESETS.map((preset) => (
+            <DropdownMenuItem
+              key={preset.name}
+              onClick={() => onThemeOverride?.(preset)}
+              disabled={!onThemeOverride}
+            >
+              <div
+                className="w-4 h-4 rounded-full mr-2 border border-white/20 flex-shrink-0"
+                style={{ backgroundColor: preset.bg, boxShadow: `inset -3px -3px 0 0 ${preset.accent}` }}
+              />
+              {preset.name}
+              {activeThemePreset === preset.name && <CheckIcon className="w-3 h-3 ml-auto" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+
       <DropdownMenuSeparator />
 
       <DropdownMenuItem
@@ -300,6 +359,8 @@ function FullPresenterView({
   onNavigateBack,
   onTogglePercentages,
   onChartOverride,
+  onThemeOverride,
+  activeThemePreset,
   onTimerStyleChange,
   onToggleAutoAdvance,
   onResetResults,
@@ -311,14 +372,7 @@ function FullPresenterView({
   return (
     <TooltipProvider>
       <div className="dark presenter-mode flex flex-col h-screen relative" style={brandingStyle}>
-        {hasCustomBg && (
-          <div
-            className={cn(
-              "absolute inset-0 pointer-events-none z-0",
-              hasBgImage ? "bg-black/50 backdrop-blur-sm" : "bg-black/30"
-            )}
-          />
-        )}
+        <div className="absolute inset-0 pointer-events-none z-0 bg-black/55 backdrop-blur-md" />
         <ReactionOverlay reaction={activeReaction} triggerKey={reactionTriggerKey} positioning="fixed" />
         <TimerOverlay
           remainingSeconds={remainingSeconds ?? null}
@@ -392,11 +446,13 @@ function FullPresenterView({
                   chartLayout={chartLayout}
                   timerStyle={timerStyle}
                   autoAdvance={autoAdvance}
+                  activeThemePreset={activeThemePreset}
                   onTogglePercentages={onTogglePercentages}
                   onChartOverride={onChartOverride}
                   onToggleQR={onToggleQR}
                   onTimerStyleChange={onTimerStyleChange}
                   onToggleAutoAdvance={onToggleAutoAdvance}
+                  onThemeOverride={onThemeOverride}
                   onResetResults={onResetResults}
                   onEnd={onEnd}
                 />
@@ -430,10 +486,7 @@ function FullPresenterView({
             <div className="flex flex-col items-center justify-center h-full px-8 lg:px-12 py-6">
               {activeQuestion ? (
                 <div
-                  className={cn(
-                    "w-full max-w-7xl flex flex-col flex-1 min-h-0",
-                    hasCustomBg && "bg-white/[0.06] backdrop-blur-sm border border-white/[0.08] rounded-3xl px-8 py-6"
-                  )}
+                  className="w-full max-w-7xl flex flex-col flex-1 min-h-0"
                 >
                   <PresenterQuestionContent
                     key={activeQuestion._id}
@@ -587,6 +640,8 @@ function CompactPresenterView({
   onToggleQR,
   onTogglePercentages,
   onChartOverride,
+  onThemeOverride,
+  activeThemePreset,
   onTimerStyleChange,
   onToggleAutoAdvance,
   onResetResults,
@@ -610,14 +665,7 @@ function CompactPresenterView({
       className="dark flex flex-col h-full relative"
       style={compactStyle}
     >
-      {hasCustomBg && (
-        <div
-          className={cn(
-            "absolute inset-0 pointer-events-none z-0",
-            hasBgImage ? "bg-black/50 backdrop-blur-sm" : "bg-black/30"
-          )}
-        />
-      )}
+      <div className="absolute inset-0 pointer-events-none z-0 bg-black/55 backdrop-blur-md" />
       <ReactionOverlay reaction={activeReaction} triggerKey={reactionTriggerKey} positioning="absolute" />
       <TimerOverlay
         remainingSeconds={remainingSeconds ?? null}
@@ -689,10 +737,7 @@ function CompactPresenterView({
           <div className="flex flex-col items-center justify-center h-full px-3 py-2">
             {activeQuestion ? (
               <div
-                className={cn(
-                  "w-full max-w-[600px] flex flex-col flex-1 min-h-0",
-                  hasCustomBg && "bg-white/[0.06] backdrop-blur-sm border border-white/[0.08] rounded-2xl px-3 py-2"
-                )}
+                className="w-full max-w-[600px] flex flex-col flex-1 min-h-0"
               >
                 <PresenterQuestionContent
                   key={activeQuestion._id}

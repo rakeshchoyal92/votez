@@ -15,6 +15,14 @@ import { PollChart } from '@/components/poll-chart'
 import { AnimatedCount } from '@/components/animated-count'
 import type { ChartLayout } from '@/components/chart-type-selector'
 
+export interface AudienceBranding {
+  logoUrl?: string | null
+  bgColor?: string
+  textColor?: string
+  accentColor?: string
+  backgroundImageUrl?: string | null
+}
+
 export interface AudienceVotingContentProps {
   question: {
     _id: string
@@ -37,6 +45,20 @@ export interface AudienceVotingContentProps {
   totalQuestions?: number
   totalSeconds?: number
   size?: 'full' | 'compact'
+  branding?: AudienceBranding
+}
+
+/** Build inline styles for a branded container (bg color, bg image). */
+function buildBrandContainerStyle(branding?: AudienceBranding): React.CSSProperties | undefined {
+  if (!branding) return undefined
+  const style: React.CSSProperties = {}
+  if (branding.bgColor) style.backgroundColor = branding.bgColor
+  if (branding.backgroundImageUrl) {
+    style.backgroundImage = `url(${branding.backgroundImageUrl})`
+    style.backgroundSize = 'cover'
+    style.backgroundPosition = 'center'
+  }
+  return Object.keys(style).length > 0 ? style : undefined
 }
 
 /**
@@ -55,6 +77,7 @@ export function AudienceVotingContent({
   totalQuestions,
   totalSeconds,
   size = 'full',
+  branding,
 }: AudienceVotingContentProps) {
   const [selectedMultiple, setSelectedMultiple] = useState<Set<string>>(new Set())
   const [openText, setOpenText] = useState('')
@@ -88,13 +111,21 @@ export function AudienceVotingContent({
 
   // ───── Time's up (full mode only) ─────
   if (!compact && isTimeUp && !isSubmitted) {
+    const brandBg = buildBrandContainerStyle(branding)
+    const hasBgImg = !!branding?.backgroundImageUrl
     return (
-      <div key={"timeup-" + question._id} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in">
-        <div className="w-18 h-18 bg-amber-500/15 rounded-full flex items-center justify-center mb-5 p-4">
-          <Timer className="w-10 h-10 text-amber-500" />
+      <div key={"timeup-" + question._id} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in relative" style={brandBg}>
+        {hasBgImg && <div className="absolute inset-0 bg-black/40" />}
+        <div className="relative z-10 flex flex-col items-center">
+          {branding?.logoUrl && (
+            <img src={branding.logoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
+          )}
+          <div className="w-18 h-18 bg-amber-500/15 rounded-full flex items-center justify-center mb-5 p-4">
+            <Timer className="w-10 h-10 text-amber-500" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-2" style={branding?.textColor ? { color: branding.textColor } : undefined}>Time&apos;s up!</h2>
+          <p className="text-muted-foreground text-sm" style={branding?.textColor ? { color: `${branding.textColor}99` } : undefined}>Waiting for next question...</p>
         </div>
-        <h2 className="text-xl font-bold text-foreground mb-2">Time&apos;s up!</h2>
-        <p className="text-muted-foreground text-sm">Waiting for next question...</p>
       </div>
     )
   }
@@ -109,6 +140,7 @@ export function AudienceVotingContent({
         questionIndex={questionIndex}
         totalQuestions={totalQuestions}
         submittedResults={submittedResults}
+        branding={branding}
       />
     )
   }
@@ -142,6 +174,7 @@ export function AudienceVotingContent({
       onMultiSubmit={handleMultiSubmit}
       onSetOpenText={setOpenText}
       onSetRating={setRating}
+      branding={branding}
     />
   )
 }
@@ -340,69 +373,92 @@ function FullSubmitted({
   questionIndex,
   totalQuestions,
   submittedResults,
+  branding,
 }: {
   question: AudienceVotingContentProps['question']
   questionIndex: number
   totalQuestions?: number
   submittedResults: AudienceVotingContentProps['submittedResults']
+  branding?: AudienceBranding
 }) {
   const progressLabel = totalQuestions
     ? `${questionIndex + 1} of ${totalQuestions} questions answered`
     : undefined
 
+  const brandBg = buildBrandContainerStyle(branding)
+  const hasBgImg = !!branding?.backgroundImageUrl
+  const brandTextStyle: React.CSSProperties | undefined = branding?.textColor ? { color: branding.textColor } : undefined
+  const brandMutedStyle: React.CSSProperties | undefined = branding?.textColor ? { color: `${branding.textColor}99` } : undefined
+
   if (submittedResults && question.type === 'multiple_choice' && question.options) {
     return (
-      <div key={"submitted-" + question._id} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in">
-        <div className="w-14 h-14 bg-success/15 rounded-full flex items-center justify-center mb-4">
-          <Check className="w-7 h-7 text-success" />
+      <div key={"submitted-" + question._id} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in relative" style={brandBg}>
+        {hasBgImg && <div className="absolute inset-0 bg-black/40" />}
+        <div className="relative z-10 flex flex-col items-center w-full">
+          {branding?.logoUrl && (
+            <img src={branding.logoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
+          )}
+          <div className="w-14 h-14 bg-success/15 rounded-full flex items-center justify-center mb-4">
+            <Check className="w-7 h-7 text-success" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground mb-2" style={brandTextStyle}>Submitted!</h2>
+          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-6" style={brandMutedStyle}>
+            <span className="font-semibold" style={brandTextStyle}>
+              <AnimatedCount value={submittedResults.totalResponses} className="font-semibold" />
+            </span>
+            <span>response{submittedResults.totalResponses !== 1 ? 's' : ''}</span>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+            </span>
+          </div>
+          <div className="w-full max-w-sm">
+            <PollChart
+              options={question.options}
+              counts={submittedResults.counts}
+              total={submittedResults.totalResponses}
+              layout={(question.chartLayout as ChartLayout) ?? 'bars'}
+              size="sm"
+              correctAnswer={question.correctAnswer}
+            />
+          </div>
+          {progressLabel && (
+            <p className={cn('text-xs mt-6', !brandMutedStyle && 'text-muted-foreground/60')} style={brandMutedStyle}>{progressLabel}</p>
+          )}
+          <p className="text-muted-foreground text-sm mt-2 animate-pulse" style={brandMutedStyle}>Waiting for next question...</p>
         </div>
-        <h2 className="text-lg font-bold text-foreground mb-2">Submitted!</h2>
-        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-6">
-          <AnimatedCount value={submittedResults.totalResponses} className="text-foreground font-semibold" />
-          <span>response{submittedResults.totalResponses !== 1 ? 's' : ''}</span>
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-          </span>
-        </div>
-        <div className="w-full max-w-sm">
-          <PollChart
-            options={question.options}
-            counts={submittedResults.counts}
-            total={submittedResults.totalResponses}
-            layout={(question.chartLayout as ChartLayout) ?? 'bars'}
-            size="sm"
-            correctAnswer={question.correctAnswer}
-          />
-        </div>
-        {progressLabel && (
-          <p className="text-muted-foreground/60 text-xs mt-6">{progressLabel}</p>
-        )}
-        <p className="text-muted-foreground text-sm mt-2 animate-pulse">Waiting for next question...</p>
       </div>
     )
   }
 
   return (
-    <div key={"submitted-" + question._id} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in">
-      <div className="w-18 h-18 bg-success/15 rounded-full flex items-center justify-center mb-5 p-4">
-        <Check className="w-10 h-10 text-success" />
-      </div>
-      <h2 className="text-xl font-bold text-foreground mb-2">Submitted!</h2>
-      {submittedResults && (
-        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
-          <AnimatedCount value={submittedResults.totalResponses} className="text-foreground font-semibold" />
-          <span>response{submittedResults.totalResponses !== 1 ? 's' : ''}</span>
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-          </span>
+    <div key={"submitted-" + question._id} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in relative" style={brandBg}>
+      {hasBgImg && <div className="absolute inset-0 bg-black/40" />}
+      <div className="relative z-10 flex flex-col items-center">
+        {branding?.logoUrl && (
+          <img src={branding.logoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
+        )}
+        <div className="w-18 h-18 bg-success/15 rounded-full flex items-center justify-center mb-5 p-4">
+          <Check className="w-10 h-10 text-success" />
         </div>
-      )}
-      {progressLabel && (
-        <p className="text-muted-foreground/60 text-xs mb-2">{progressLabel}</p>
-      )}
-      <p className="text-muted-foreground text-sm animate-pulse">Waiting for next question...</p>
+        <h2 className="text-xl font-bold text-foreground mb-2" style={brandTextStyle}>Submitted!</h2>
+        {submittedResults && (
+          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2" style={brandMutedStyle}>
+            <span className="font-semibold" style={brandTextStyle}>
+              <AnimatedCount value={submittedResults.totalResponses} className="font-semibold" />
+            </span>
+            <span>response{submittedResults.totalResponses !== 1 ? 's' : ''}</span>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+            </span>
+          </div>
+        )}
+        {progressLabel && (
+          <p className={cn('text-xs mb-2', !brandMutedStyle && 'text-muted-foreground/60')} style={brandMutedStyle}>{progressLabel}</p>
+        )}
+        <p className="text-muted-foreground text-sm animate-pulse" style={brandMutedStyle}>Waiting for next question...</p>
+      </div>
     </div>
   )
 }
@@ -422,6 +478,7 @@ function FullVoting({
   onMultiSubmit,
   onSetOpenText,
   onSetRating,
+  branding,
 }: {
   question: AudienceVotingContentProps['question']
   questionIndex: number
@@ -437,42 +494,71 @@ function FullVoting({
   onMultiSubmit: () => void
   onSetOpenText: (text: string) => void
   onSetRating: (rating: number) => void
+  branding?: AudienceBranding
 }) {
   const isTimed = totalSeconds != null && totalSeconds > 0 && remainingSeconds != null
   const progressFraction = totalQuestions ? (questionIndex + 1) / totalQuestions : 0
 
-  // Timer color logic
-  const timerColor = isTimed
-    ? (remainingSeconds ?? 0) <= 5
-      ? 'from-red-500 to-red-600'
-      : (remainingSeconds ?? 0) <= 10
-        ? 'from-amber-400 to-amber-500'
-        : 'from-primary to-primary'
-    : ''
-  const timerGlow = isTimed
-    ? (remainingSeconds ?? 0) <= 5
-      ? 'shadow-[0_0_12px_2px_rgba(239,68,68,0.4)]'
-      : (remainingSeconds ?? 0) <= 10
-        ? 'shadow-[0_0_12px_2px_rgba(245,158,11,0.3)]'
-        : 'shadow-[0_0_12px_2px_hsl(var(--primary)/0.3)]'
-    : ''
+  // Timer phase logic (matches presenter EdgeTimer)
+  const secs = remainingSeconds ?? 0
+  const isDone = isTimed && secs === 0
+  const isUrgent = isTimed && secs > 0 && secs <= 5
+  const isWarning = isTimed && secs > 5 && secs <= 10
+  const fraction = isTimed ? Math.min(1, Math.max(0, secs / Math.max(1, totalSeconds))) : 0
+
+  const gradientClass = isDone || isUrgent
+    ? 'from-red-500 to-orange-500'
+    : isWarning
+      ? 'from-amber-500 to-yellow-400'
+      : 'from-primary to-blue-400'
+
+  const glowColor = isDone || isUrgent
+    ? 'rgba(239,68,68,0.4)'
+    : isWarning
+      ? 'rgba(245,158,11,0.4)'
+      : 'hsl(var(--primary) / 0.4)'
+
+  const badgeClass = isDone || isUrgent
+    ? 'text-red-400 border-red-400/40'
+    : isWarning
+      ? 'text-amber-400 border-amber-300/40'
+      : 'text-primary border-primary/40'
+
+  // Branding styles
+  const brandBg = buildBrandContainerStyle(branding)
+  const hasBgImg = !!branding?.backgroundImageUrl
+  const brandTextStyle: React.CSSProperties | undefined = branding?.textColor ? { color: branding.textColor } : undefined
 
   return (
-    <div key={question._id} className="min-h-screen bg-background flex flex-col p-6 animate-fade-in">
+    <div key={question._id} className="min-h-screen bg-background flex flex-col p-6 animate-fade-in relative" style={brandBg}>
+      {hasBgImg && <div className="absolute inset-0 bg-black/40" />}
+
       {/* Top edge: timer bar (timed) or progress bar (untimed) */}
       {isTimed ? (
-        <div className="fixed top-0 left-0 right-0 h-1 z-50 bg-muted/30">
-          <div
-            className={cn('h-full bg-gradient-to-r transition-all duration-300 rounded-r-full', timerColor, timerGlow)}
-            style={{ width: `${((remainingSeconds ?? 0) / totalSeconds) * 100}%` }}
-          />
-          <div
-            className={cn(
-              'absolute top-1.5 right-3 text-[10px] font-mono font-bold tabular-nums px-1.5 py-0.5 rounded-full bg-background/80 backdrop-blur-sm border',
-              (remainingSeconds ?? 0) <= 5 ? 'text-red-500 border-red-500/30' : (remainingSeconds ?? 0) <= 10 ? 'text-amber-500 border-amber-500/30' : 'text-muted-foreground border-border'
+        <div className="fixed top-0 left-0 right-0 z-50">
+          <div className="h-1 w-full overflow-hidden bg-muted/30">
+            {isDone ? (
+              <div className="h-full" />
+            ) : (
+              <div
+                className={cn('h-full bg-gradient-to-r transition-[width] duration-1000 ease-linear', gradientClass)}
+                style={{
+                  width: `${fraction * 100}%`,
+                  boxShadow: `0 0 8px ${glowColor}, 0 0 2px ${glowColor}`,
+                }}
+              />
             )}
-          >
-            {remainingSeconds}s
+          </div>
+          <div className="flex justify-end px-3 pt-1.5">
+            <span
+              className={cn(
+                'font-mono font-semibold tabular-nums text-[10px] rounded-full border px-2 py-0.5 backdrop-blur-sm bg-background/60',
+                badgeClass,
+                isUrgent && 'animate-pulse'
+              )}
+            >
+              {isDone ? "Time's up" : `${secs}s`}
+            </span>
           </div>
         </div>
       ) : totalQuestions ? (
@@ -484,11 +570,14 @@ function FullVoting({
         </div>
       ) : null}
 
-      <div className="flex-1 flex flex-col items-center justify-center max-w-lg mx-auto w-full">
+      <div className="flex-1 flex flex-col items-center justify-center max-w-lg mx-auto w-full relative z-10">
+        {branding?.logoUrl && (
+          <img src={branding.logoUrl} alt="Logo" className="h-10 w-auto object-contain mb-5" />
+        )}
         <p className="text-xs text-primary font-semibold mb-3 uppercase tracking-widest">
           Question {questionIndex + 1}{totalQuestions ? ` of ${totalQuestions}` : ''}
         </p>
-        <h2 className="text-2xl font-bold text-foreground text-center mb-4 leading-snug">
+        <h2 className="text-2xl font-bold text-foreground text-center mb-4 leading-snug" style={brandTextStyle}>
           {question.title}
         </h2>
 

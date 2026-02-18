@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { AudienceVotingContent } from '@/components/shared'
+import type { AudienceBranding } from '@/components/shared'
 
 export function AudiencePage() {
   const { code } = useParams<{ code: string }>()
@@ -187,15 +188,22 @@ export function AudiencePage() {
   }
 
   // Active — show the current question for voting
+  const activeBranding: AudienceBranding = {
+    logoUrl: session.brandLogoUrl,
+    bgColor: session.brandBgColor,
+    textColor: session.brandTextColor,
+    accentColor: session.brandAccentColor,
+    backgroundImageUrl: session.brandBackgroundImageUrl,
+  }
+
   return (
-    <div style={audienceBrandStyle}>
-      <ActiveQuestionVoter
-        sessionId={session._id}
-        participantId={participantId as Id<'participants'>}
-        activeQuestionId={session.activeQuestionId}
-        questionStartedAt={session.questionStartedAt}
-      />
-    </div>
+    <ActiveQuestionVoter
+      sessionId={session._id}
+      participantId={participantId as Id<'participants'>}
+      activeQuestionId={session.activeQuestionId}
+      questionStartedAt={session.questionStartedAt}
+      branding={activeBranding}
+    />
   )
 }
 
@@ -208,11 +216,13 @@ function ActiveQuestionVoter({
   participantId,
   activeQuestionId,
   questionStartedAt,
+  branding,
 }: {
   sessionId: Id<'sessions'>
   participantId: Id<'participants'>
   activeQuestionId?: Id<'questions'>
   questionStartedAt?: number
+  branding?: AudienceBranding
 }) {
   const questions = useQuery(api.questions.listBySession, { sessionId })
   const submitResponse = useMutation(api.responses.submit)
@@ -311,6 +321,7 @@ function ActiveQuestionVoter({
       totalQuestions={sortedQuestions.length}
       totalSeconds={question.timeLimit && question.timeLimit > 0 ? question.timeLimit : undefined}
       size="full"
+      branding={branding}
     />
   )
 }

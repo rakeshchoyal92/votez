@@ -4,7 +4,7 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { Vote, Loader2, Check, Clock } from 'lucide-react'
-import { getDeviceId } from '@/lib/utils'
+import { cn, getDeviceId } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -101,6 +101,19 @@ export function AudiencePage() {
     audienceBrandStyle.backgroundPosition = 'center'
   }
   const hasAudienceBgImage = !!session.brandBackgroundImageUrl
+  const hasCustomBg = !!session.brandBgColor || hasAudienceBgImage
+
+  // Scrim overlay (matches presenter-view.tsx)
+  const scrimClass = hasCustomBg
+    ? hasAudienceBgImage
+      ? 'bg-black/50 backdrop-blur-sm'
+      : 'bg-black/30'
+    : null
+
+  // Glass card for content
+  const glassCardClass = hasCustomBg
+    ? 'bg-white/[0.06] backdrop-blur-sm border border-white/[0.08] rounded-2xl px-6 py-8'
+    : ''
 
   // Brand text color helpers for overriding Tailwind text-foreground/text-muted-foreground
   const brandTextStyle: React.CSSProperties | undefined = session.brandTextColor
@@ -114,8 +127,8 @@ export function AudiencePage() {
   if (session.status === 'ended') {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in relative" style={audienceBrandStyle}>
-        {hasAudienceBgImage && <div className="absolute inset-0 bg-black/40" />}
-        <div className="relative z-10 flex flex-col items-center">
+        {scrimClass && <div className={cn("absolute inset-0 pointer-events-none z-0", scrimClass)} />}
+        <div className={cn("relative z-10 flex flex-col items-center", glassCardClass)}>
           {session.brandLogoUrl && (
             <img src={session.brandLogoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
           )}
@@ -135,8 +148,8 @@ export function AudiencePage() {
   if (!hasJoined) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative" style={audienceBrandStyle}>
-        {hasAudienceBgImage && <div className="absolute inset-0 bg-black/40" />}
-        <div className="w-full max-w-xs animate-fade-in relative z-10">
+        {scrimClass && <div className={cn("absolute inset-0 pointer-events-none z-0", scrimClass)} />}
+        <div className={cn("w-full max-w-xs animate-fade-in relative z-10", glassCardClass)}>
           <div className="flex flex-col items-center mb-8">
             {session.brandLogoUrl ? (
               <img src={session.brandLogoUrl} alt="Logo" className="h-12 w-auto object-contain mb-5" />
@@ -172,16 +185,16 @@ export function AudiencePage() {
   if (session.status === 'draft') {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative" style={audienceBrandStyle}>
-        {hasAudienceBgImage && <div className="absolute inset-0 bg-black/40" />}
-        <div className="relative z-10 flex flex-col items-center">
-        {session.brandLogoUrl && (
-          <img src={session.brandLogoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
-        )}
-        <div className="animate-pulse-soft">
-          <Clock className="w-14 h-14 text-primary/70 mx-auto mb-5" />
-        </div>
-        <h2 className="text-xl font-bold text-foreground mb-2" style={brandTextStyle}>Waiting to start...</h2>
-        <p className="text-muted-foreground text-sm" style={brandMutedTextStyle}>The presenter hasn't started yet</p>
+        {scrimClass && <div className={cn("absolute inset-0 pointer-events-none z-0", scrimClass)} />}
+        <div className={cn("relative z-10 flex flex-col items-center", glassCardClass)}>
+          {session.brandLogoUrl && (
+            <img src={session.brandLogoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
+          )}
+          <div className="animate-pulse-soft">
+            <Clock className="w-14 h-14 text-primary/70 mx-auto mb-5" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-2" style={brandTextStyle}>Waiting to start...</h2>
+          <p className="text-muted-foreground text-sm" style={brandMutedTextStyle}>The presenter hasn't started yet</p>
         </div>
       </div>
     )
@@ -286,14 +299,18 @@ function ActiveQuestionVoter({
   }, [question?.timeLimit, questionStartedAt, question?._id])
 
   if (!question) {
-    const brandBg = branding ? buildBrandStyle(branding) : undefined
+    const hasBgColor = !!branding?.bgColor
     const hasBgImg = !!branding?.backgroundImageUrl
+    const hasCustom = hasBgColor || hasBgImg
+    const brandBg = branding ? buildBrandStyle(branding) : undefined
+    const scrim = hasCustom ? (hasBgImg ? 'bg-black/50 backdrop-blur-sm' : 'bg-black/30') : null
+    const glass = hasCustom ? 'bg-white/[0.06] backdrop-blur-sm border border-white/[0.08] rounded-2xl px-6 py-8' : ''
     const txtStyle: React.CSSProperties | undefined = branding?.textColor ? { color: branding.textColor } : undefined
     const mutedStyle: React.CSSProperties | undefined = branding?.textColor ? { color: `${branding.textColor}99` } : undefined
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative" style={brandBg}>
-        {hasBgImg && <div className="absolute inset-0 bg-black/40" />}
-        <div className="relative z-10 flex flex-col items-center">
+        {scrim && <div className={cn("absolute inset-0 pointer-events-none z-0", scrim)} />}
+        <div className={cn("relative z-10 flex flex-col items-center", glass)}>
           {branding?.logoUrl && (
             <img src={branding.logoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
           )}

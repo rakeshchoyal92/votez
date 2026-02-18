@@ -48,17 +48,47 @@ export interface AudienceVotingContentProps {
   branding?: AudienceBranding
 }
 
-/** Build inline styles for a branded container (bg color, bg image). */
-function buildBrandContainerStyle(branding?: AudienceBranding): React.CSSProperties | undefined {
-  if (!branding) return undefined
-  const style: React.CSSProperties = {}
-  if (branding.bgColor) style.backgroundColor = branding.bgColor
-  if (branding.backgroundImageUrl) {
-    style.backgroundImage = `url(${branding.backgroundImageUrl})`
-    style.backgroundSize = 'cover'
-    style.backgroundPosition = 'center'
-  }
-  return Object.keys(style).length > 0 ? style : undefined
+/** Compute branding helpers for full-mode screens. */
+function useBrandingStyles(branding?: AudienceBranding) {
+  const hasBgColor = !!branding?.bgColor
+  const hasBgImage = !!branding?.backgroundImageUrl
+  const hasCustomBg = hasBgColor || hasBgImage
+
+  // Outer container inline style (bg color + bg image)
+  const containerStyle: React.CSSProperties | undefined = hasCustomBg
+    ? {
+        ...(branding?.bgColor ? { backgroundColor: branding.bgColor } : {}),
+        ...(branding?.backgroundImageUrl
+          ? {
+              backgroundImage: `url(${branding.backgroundImageUrl})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }
+          : {}),
+      }
+    : undefined
+
+  // Scrim overlay class (matches presenter-view.tsx)
+  const scrimClass = hasCustomBg
+    ? hasBgImage
+      ? 'bg-black/50 backdrop-blur-sm'
+      : 'bg-black/30'
+    : null
+
+  // Glass card class for content (matches presenter-view.tsx)
+  const glassCardClass = hasCustomBg
+    ? 'bg-white/[0.06] backdrop-blur-sm border border-white/[0.08] rounded-2xl px-5 py-6 sm:px-8 sm:py-8'
+    : ''
+
+  const textStyle: React.CSSProperties | undefined = branding?.textColor
+    ? { color: branding.textColor }
+    : undefined
+
+  const mutedTextStyle: React.CSSProperties | undefined = branding?.textColor
+    ? { color: `${branding.textColor}99` }
+    : undefined
+
+  return { containerStyle, scrimClass, glassCardClass, hasCustomBg, textStyle, mutedTextStyle, logoUrl: branding?.logoUrl }
 }
 
 /**
@@ -111,20 +141,19 @@ export function AudienceVotingContent({
 
   // ───── Time's up (full mode only) ─────
   if (!compact && isTimeUp && !isSubmitted) {
-    const brandBg = buildBrandContainerStyle(branding)
-    const hasBgImg = !!branding?.backgroundImageUrl
+    const b = useBrandingStyles(branding)
     return (
-      <div key={"timeup-" + question._id} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in relative" style={brandBg}>
-        {hasBgImg && <div className="absolute inset-0 bg-black/40" />}
-        <div className="relative z-10 flex flex-col items-center">
-          {branding?.logoUrl && (
-            <img src={branding.logoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
+      <div key={"timeup-" + question._id} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in relative" style={b.containerStyle}>
+        {b.scrimClass && <div className={cn("absolute inset-0 pointer-events-none z-0", b.scrimClass)} />}
+        <div className={cn("relative z-10 flex flex-col items-center", b.glassCardClass)}>
+          {b.logoUrl && (
+            <img src={b.logoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
           )}
           <div className="w-18 h-18 bg-amber-500/15 rounded-full flex items-center justify-center mb-5 p-4">
             <Timer className="w-10 h-10 text-amber-500" />
           </div>
-          <h2 className="text-xl font-bold text-foreground mb-2" style={branding?.textColor ? { color: branding.textColor } : undefined}>Time&apos;s up!</h2>
-          <p className="text-muted-foreground text-sm" style={branding?.textColor ? { color: `${branding.textColor}99` } : undefined}>Waiting for next question...</p>
+          <h2 className="text-xl font-bold text-foreground mb-2" style={b.textStyle}>Time&apos;s up!</h2>
+          <p className="text-muted-foreground text-sm" style={b.mutedTextStyle}>Waiting for next question...</p>
         </div>
       </div>
     )
@@ -385,25 +414,22 @@ function FullSubmitted({
     ? `${questionIndex + 1} of ${totalQuestions} questions answered`
     : undefined
 
-  const brandBg = buildBrandContainerStyle(branding)
-  const hasBgImg = !!branding?.backgroundImageUrl
-  const brandTextStyle: React.CSSProperties | undefined = branding?.textColor ? { color: branding.textColor } : undefined
-  const brandMutedStyle: React.CSSProperties | undefined = branding?.textColor ? { color: `${branding.textColor}99` } : undefined
+  const b = useBrandingStyles(branding)
 
   if (submittedResults && question.type === 'multiple_choice' && question.options) {
     return (
-      <div key={"submitted-" + question._id} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in relative" style={brandBg}>
-        {hasBgImg && <div className="absolute inset-0 bg-black/40" />}
-        <div className="relative z-10 flex flex-col items-center w-full">
-          {branding?.logoUrl && (
-            <img src={branding.logoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
+      <div key={"submitted-" + question._id} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in relative" style={b.containerStyle}>
+        {b.scrimClass && <div className={cn("absolute inset-0 pointer-events-none z-0", b.scrimClass)} />}
+        <div className={cn("relative z-10 flex flex-col items-center w-full max-w-md", b.glassCardClass)}>
+          {b.logoUrl && (
+            <img src={b.logoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
           )}
           <div className="w-14 h-14 bg-success/15 rounded-full flex items-center justify-center mb-4">
             <Check className="w-7 h-7 text-success" />
           </div>
-          <h2 className="text-lg font-bold text-foreground mb-2" style={brandTextStyle}>Submitted!</h2>
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-6" style={brandMutedStyle}>
-            <span className="font-semibold" style={brandTextStyle}>
+          <h2 className="text-lg font-bold text-foreground mb-2" style={b.textStyle}>Submitted!</h2>
+          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-6" style={b.mutedTextStyle}>
+            <span className="font-semibold" style={b.textStyle}>
               <AnimatedCount value={submittedResults.totalResponses} className="font-semibold" />
             </span>
             <span>response{submittedResults.totalResponses !== 1 ? 's' : ''}</span>
@@ -423,28 +449,28 @@ function FullSubmitted({
             />
           </div>
           {progressLabel && (
-            <p className={cn('text-xs mt-6', !brandMutedStyle && 'text-muted-foreground/60')} style={brandMutedStyle}>{progressLabel}</p>
+            <p className={cn('text-xs mt-6', !b.mutedTextStyle && 'text-muted-foreground/60')} style={b.mutedTextStyle}>{progressLabel}</p>
           )}
-          <p className="text-muted-foreground text-sm mt-2 animate-pulse" style={brandMutedStyle}>Waiting for next question...</p>
+          <p className="text-muted-foreground text-sm mt-2 animate-pulse" style={b.mutedTextStyle}>Waiting for next question...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div key={"submitted-" + question._id} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in relative" style={brandBg}>
-      {hasBgImg && <div className="absolute inset-0 bg-black/40" />}
-      <div className="relative z-10 flex flex-col items-center">
-        {branding?.logoUrl && (
-          <img src={branding.logoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
+    <div key={"submitted-" + question._id} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in relative" style={b.containerStyle}>
+      {b.scrimClass && <div className={cn("absolute inset-0 pointer-events-none z-0", b.scrimClass)} />}
+      <div className={cn("relative z-10 flex flex-col items-center", b.glassCardClass)}>
+        {b.logoUrl && (
+          <img src={b.logoUrl} alt="Logo" className="h-10 w-auto object-contain mb-6" />
         )}
         <div className="w-18 h-18 bg-success/15 rounded-full flex items-center justify-center mb-5 p-4">
           <Check className="w-10 h-10 text-success" />
         </div>
-        <h2 className="text-xl font-bold text-foreground mb-2" style={brandTextStyle}>Submitted!</h2>
+        <h2 className="text-xl font-bold text-foreground mb-2" style={b.textStyle}>Submitted!</h2>
         {submittedResults && (
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2" style={brandMutedStyle}>
-            <span className="font-semibold" style={brandTextStyle}>
+          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2" style={b.mutedTextStyle}>
+            <span className="font-semibold" style={b.textStyle}>
               <AnimatedCount value={submittedResults.totalResponses} className="font-semibold" />
             </span>
             <span>response{submittedResults.totalResponses !== 1 ? 's' : ''}</span>
@@ -455,9 +481,9 @@ function FullSubmitted({
           </div>
         )}
         {progressLabel && (
-          <p className={cn('text-xs mb-2', !brandMutedStyle && 'text-muted-foreground/60')} style={brandMutedStyle}>{progressLabel}</p>
+          <p className={cn('text-xs mb-2', !b.mutedTextStyle && 'text-muted-foreground/60')} style={b.mutedTextStyle}>{progressLabel}</p>
         )}
-        <p className="text-muted-foreground text-sm animate-pulse" style={brandMutedStyle}>Waiting for next question...</p>
+        <p className="text-muted-foreground text-sm animate-pulse" style={b.mutedTextStyle}>Waiting for next question...</p>
       </div>
     </div>
   )
@@ -525,13 +551,11 @@ function FullVoting({
       : 'text-primary border-primary/40'
 
   // Branding styles
-  const brandBg = buildBrandContainerStyle(branding)
-  const hasBgImg = !!branding?.backgroundImageUrl
-  const brandTextStyle: React.CSSProperties | undefined = branding?.textColor ? { color: branding.textColor } : undefined
+  const b = useBrandingStyles(branding)
 
   return (
-    <div key={question._id} className="min-h-screen bg-background flex flex-col px-4 py-6 sm:p-8 animate-fade-in relative" style={brandBg}>
-      {hasBgImg && <div className="absolute inset-0 bg-black/40" />}
+    <div key={question._id} className="min-h-screen bg-background flex flex-col px-4 py-6 sm:p-8 animate-fade-in relative" style={b.containerStyle}>
+      {b.scrimClass && <div className={cn("absolute inset-0 pointer-events-none z-0", b.scrimClass)} />}
 
       {/* Top edge: timer bar (timed) or progress bar (untimed) */}
       {isTimed ? (
@@ -570,14 +594,17 @@ function FullVoting({
         </div>
       ) : null}
 
-      <div className="flex-1 flex flex-col items-center justify-center max-w-lg mx-auto w-full relative z-10">
-        {branding?.logoUrl && (
-          <img src={branding.logoUrl} alt="Logo" className="h-10 sm:h-12 w-auto object-contain mb-5" />
+      <div className={cn(
+        "flex-1 flex flex-col items-center justify-center max-w-lg mx-auto w-full relative z-10",
+        b.glassCardClass
+      )}>
+        {b.logoUrl && (
+          <img src={b.logoUrl} alt="Logo" className="h-10 sm:h-12 w-auto object-contain mb-5" />
         )}
         <p className="text-sm sm:text-xs text-primary font-semibold mb-2 uppercase tracking-widest">
           Question {questionIndex + 1}{totalQuestions ? ` of ${totalQuestions}` : ''}
         </p>
-        <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-6 leading-snug" style={brandTextStyle}>
+        <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-6 leading-snug" style={b.textStyle}>
           {question.title}
         </h2>
 

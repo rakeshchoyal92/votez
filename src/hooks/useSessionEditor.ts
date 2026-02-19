@@ -28,6 +28,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
   const resetSessionMutation = useMutation(api.sessions.resetSession)
   const resetResultsMutation = useMutation(api.responses.resetResults)
   const seedResponsesMutation = useMutation(api.seed.seedResponses)
+  const updateQuizModeMutation = useMutation(api.sessions.updateQuizMode)
 
   // --- Save status ---
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
@@ -50,6 +51,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
   const [correctAnswerDraft, setCorrectAnswerDraft] = useState<string>('')
   const [showResultsDraft, setShowResultsDraft] = useState<ShowResults>('always')
   const [timeLimitDraft, setTimeLimitDraft] = useState<number>(0)
+  const [optionImagesDraft, setOptionImagesDraft] = useState<string[]>([])
 
   // 3-panel: selected question
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null)
@@ -85,7 +87,8 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
   const isLoading = session === undefined || questions === undefined
   const joinUrl = session ? `${window.location.origin}/join/${session.code}` : ''
   const statusConfig = session ? STATUS_CONFIG[session.status] : STATUS_CONFIG.draft
-  const isEditable = session?.status === 'draft'
+  const isDraft = session?.status === 'draft'
+  const isEditable = session?.status === 'draft' || session?.status === 'active'
   const isLive = session?.status === 'active'
   const isEnded = session?.status === 'ended'
   const hasData = (stats?.participantCount ?? 0) > 0 || (stats?.responseCount ?? 0) > 0
@@ -100,11 +103,13 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
   }, [questions, optimisticOrder])
 
   // --- 3-panel: load question data into drafts ---
-  const loadQuestionDrafts = useCallback((q: Doc<'questions'>) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const loadQuestionDrafts = useCallback((q: any) => {
     setSelectedQuestionId(q._id)
     setTypeDraft(q.type as QuestionType)
     setQuestionDraft(q.title)
     setOptionsDraft(q.options ?? [])
+    setOptionImagesDraft(q.optionImages ?? [])
     setChartLayoutDraft((q.chartLayout as ChartLayout) ?? 'bars')
     setAllowMultipleDraft(q.allowMultiple ?? false)
     setCorrectAnswerDraft(q.correctAnswer ?? '')
@@ -118,6 +123,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     typeDraft,
     questionDraft,
     optionsDraft,
+    optionImagesDraft,
     chartLayoutDraft,
     allowMultipleDraft,
     correctAnswerDraft,
@@ -125,12 +131,14 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     timeLimitDraft,
     sortedQuestions,
     isEditable,
+    isDraft,
   })
   autoSaveRef.current = {
     selectedQuestionId,
     typeDraft,
     questionDraft,
     optionsDraft,
+    optionImagesDraft,
     chartLayoutDraft,
     allowMultipleDraft,
     correctAnswerDraft,
@@ -138,6 +146,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     timeLimitDraft,
     sortedQuestions,
     isEditable,
+    isDraft,
   }
 
   const autoSaveSelectedQuestion = useCallback(() => {
@@ -151,11 +160,22 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     if (!question) return
     const isMC = s.typeDraft === 'multiple_choice'
 
+    // Keep optionImages aligned with cleaned options length
+    const cleanedImages = isMC ? s.optionImagesDraft.slice(0, s.optionsDraft.length) : undefined
+    // Filter images to match cleaned options (remove images for blank options)
+    const filteredImages = isMC && cleanedImages
+      ? s.optionsDraft.reduce<string[]>((acc, opt, i) => {
+          if (opt.trim()) acc.push(cleanedImages[i] || '')
+          return acc
+        }, [])
+      : undefined
+
     updateQuestion({
       questionId: s.selectedQuestionId as Id<'questions'>,
       type: s.typeDraft,
       title,
       options: isMC ? cleanedOptions : undefined,
+      optionImages: filteredImages?.some(img => img) ? filteredImages : undefined,
       timeLimit: s.timeLimitDraft,
       chartLayout: isMC ? s.chartLayoutDraft : undefined,
       allowMultiple: isMC ? s.allowMultipleDraft : undefined,
@@ -186,11 +206,21 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
         return
       }
       const isMC = s.typeDraft === 'multiple_choice'
+
+      const cleanedImages = isMC ? s.optionImagesDraft.slice(0, s.optionsDraft.length) : undefined
+      const filteredImages = isMC && cleanedImages
+        ? s.optionsDraft.reduce<string[]>((acc, opt, i) => {
+            if (opt.trim()) acc.push(cleanedImages[i] || '')
+            return acc
+          }, [])
+        : undefined
+
       updateQuestion({
         questionId: s.selectedQuestionId as Id<'questions'>,
         type: s.typeDraft,
         title,
         options: isMC ? cleanedOptions : undefined,
+        optionImages: filteredImages?.some(img => img) ? filteredImages : undefined,
         timeLimit: s.timeLimitDraft,
         chartLayout: isMC ? s.chartLayoutDraft : undefined,
         allowMultiple: isMC ? s.allowMultipleDraft : undefined,
@@ -247,6 +277,11 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     debouncedAutoSave()
   }, [debouncedAutoSave])
 
+  const setOptionImagesDraftWithAutoSave = useCallback((val: string[]) => {
+    setOptionImagesDraft(val)
+    debouncedAutoSave()
+  }, [debouncedAutoSave])
+
   // --- 3-panel: select a question ---
   const selectQuestion = useCallback((id: string) => {
     if (id === autoSaveRef.current.selectedQuestionId) return
@@ -297,6 +332,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     setTypeDraft(type)
     setQuestionDraft('')
     setOptionsDraft(defaultOptions ?? [])
+    setOptionImagesDraft([])
     setChartLayoutDraft('bars')
     setAllowMultipleDraft(false)
     setCorrectAnswerDraft('')
@@ -313,6 +349,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     // Switching to MC: initialize default options
     if (newType === 'multiple_choice' && oldType !== 'multiple_choice') {
       setOptionsDraft(['', ''])
+      setOptionImagesDraft([])
       setChartLayoutDraft('bars')
       setAllowMultipleDraft(false)
       setCorrectAnswerDraft('')
@@ -321,6 +358,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     // Switching away from MC: clear MC-specific fields
     if (newType !== 'multiple_choice' && oldType === 'multiple_choice') {
       setOptionsDraft([])
+      setOptionImagesDraft([])
       setChartLayoutDraft('bars')
       setAllowMultipleDraft(false)
       setCorrectAnswerDraft('')
@@ -363,6 +401,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     setTypeDraft(question.type as QuestionType)
     setQuestionDraft(question.title + ' (copy)')
     setOptionsDraft(question.options ?? [])
+    setOptionImagesDraft(question.optionImages ?? [])
     setChartLayoutDraft((question.chartLayout as ChartLayout) ?? 'bars')
     setAllowMultipleDraft(question.allowMultiple ?? false)
     setCorrectAnswerDraft(question.correctAnswer ?? '')
@@ -381,11 +420,20 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     const cleanedOptions = optionsDraft.map(o => o.trim()).filter(Boolean)
     const isMC = typeDraft === 'multiple_choice'
 
+    const cleanedImages = isMC ? optionImagesDraft.slice(0, optionsDraft.length) : undefined
+    const filteredImages = isMC && cleanedImages
+      ? optionsDraft.reduce<string[]>((acc, opt, i) => {
+          if (opt.trim()) acc.push(cleanedImages[i] || '')
+          return acc
+        }, [])
+      : undefined
+
     await updateQuestion({
       questionId: targetId as Id<'questions'>,
       type: typeDraft,
       title,
       options: isMC ? cleanedOptions : undefined,
+      optionImages: filteredImages?.some(img => img) ? filteredImages : undefined,
       timeLimit: timeLimitDraft,
       chartLayout: isMC ? chartLayoutDraft : undefined,
       allowMultiple: isMC ? allowMultipleDraft : undefined,
@@ -432,7 +480,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
   }
 
   const startEditingTitle = () => {
-    if (!isEditable || !session) return
+    if (!session || session.status === 'ended') return
     setEditingTitle(true)
     setTitleDraft(session.title)
   }
@@ -442,6 +490,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     setTypeDraft(question.type as QuestionType)
     setQuestionDraft(question.title)
     setOptionsDraft(question.options ?? [])
+    setOptionImagesDraft(question.optionImages ?? [])
     setChartLayoutDraft((question.chartLayout as ChartLayout) ?? 'bars')
     setAllowMultipleDraft(question.allowMultiple ?? false)
     setCorrectAnswerDraft(question.correctAnswer ?? '')
@@ -508,6 +557,10 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     clearBrandingImage({ sessionId, field })
   }, [clearBrandingImage, sessionId])
 
+  const handleToggleQuizMode = useCallback(async (enabled: boolean) => {
+    await updateQuizModeMutation({ sessionId, isQuizMode: enabled })
+  }, [updateQuizModeMutation, sessionId])
+
   const handleResetSession = useCallback(async () => {
     await resetSessionMutation({ sessionId })
     toast.success('Session data reset')
@@ -549,6 +602,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     joinUrl,
     statusConfig,
     isEditable,
+    isDraft,
     isLive,
     isEnded,
     hasData,
@@ -587,6 +641,8 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     // Type & field drafts
     typeDraft,
     handleTypeChange,
+    optionImagesDraft,
+    setOptionImagesDraft: setOptionImagesDraftWithAutoSave,
     chartLayoutDraft,
     setChartLayoutDraft: setChartLayoutDraftWithAutoSave,
     allowMultipleDraft,
@@ -622,6 +678,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     handleUploadImage,
     handleRemoveImage,
     handleResetSession,
+    handleToggleQuizMode,
     deselectQuestion,
 
     // Seed simulation

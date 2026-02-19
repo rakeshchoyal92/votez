@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { AudienceVotingContent, AudienceHeader } from '@/components/shared'
-import type { AudienceBranding } from '@/components/shared'
+import type { AudienceBranding, QuizScoreFeedback } from '@/components/shared'
 
 export function AudiencePage() {
   const { code } = useParams<{ code: string }>()
@@ -171,6 +171,7 @@ export function AudiencePage() {
       participantId={participantId as Id<'participants'>}
       activeQuestionId={session.activeQuestionId}
       questionStartedAt={session.questionStartedAt}
+      isQuizMode={session.isQuizMode ?? false}
       branding={audienceBranding}
     />
   )
@@ -185,12 +186,14 @@ function ActiveQuestionVoter({
   participantId,
   activeQuestionId,
   questionStartedAt,
+  isQuizMode,
   branding,
 }: {
   sessionId: Id<'sessions'>
   participantId: Id<'participants'>
   activeQuestionId?: Id<'questions'>
   questionStartedAt?: number
+  isQuizMode?: boolean
   branding?: AudienceBranding
 }) {
   const questions = useQuery(api.questions.listBySession, { sessionId })
@@ -217,6 +220,28 @@ function ActiveQuestionVoter({
       ? { questionId: question._id }
       : 'skip'
   )
+
+  // Fetch quiz score after submitting (only when quiz mode is on)
+  const quizScoreQuery = useQuery(
+    api.responses.getParticipantScore,
+    submitted && isQuizMode && participantId
+      ? { sessionId, participantId }
+      : 'skip'
+  )
+
+  // Build quiz score feedback
+  const quizScore: QuizScoreFeedback | null = (() => {
+    if (!submitted || !isQuizMode || !quizScoreQuery) return null
+    const lastCorrect = question?._id ? quizScoreQuery.lastCorrect?.[question._id] : undefined
+    return {
+      score: quizScoreQuery.score,
+      rank: quizScoreQuery.rank,
+      totalParticipants: quizScoreQuery.totalParticipants,
+      isCorrect: lastCorrect?.isCorrect,
+      correctAnswer: lastCorrect?.correctAnswer,
+      pointsEarned: lastCorrect?.points ?? 0,
+    }
+  })()
 
   // Reset state when question changes
   useEffect(() => {
@@ -294,6 +319,7 @@ function ActiveQuestionVoter({
       totalSeconds={question.timeLimit && question.timeLimit > 0 ? question.timeLimit : undefined}
       size="full"
       branding={branding}
+      quizScore={quizScore}
     />
   )
 }

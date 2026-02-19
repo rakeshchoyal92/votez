@@ -293,10 +293,10 @@ export function SessionEditorPage() {
             <SlideList
               questions={editor.sortedQuestions}
               selectedId={editor.selectedQuestionId}
-              isEditable={editor.isEditable}
+              isEditable={editor.isDraft}
               onSelect={editor.selectQuestion}
               onAddQuestion={editor.handleAddQuestion}
-              onReorder={editor.isEditable ? editor.handleReorderQuestions : undefined}
+              onReorder={editor.isDraft ? editor.handleReorderQuestions : undefined}
               responseCounts={editor.responseCounts ?? undefined}
               activeQuestionId={editor.session.activeQuestionId ?? undefined}
               sessionStatus={editor.session.status}
@@ -336,6 +336,7 @@ export function SessionEditorPage() {
                 questionDraft={editor.questionDraft}
                 typeDraft={editor.typeDraft}
                 optionsDraft={editor.optionsDraft}
+                optionImagesDraft={editor.optionImagesDraft}
                 chartLayoutDraft={editor.chartLayoutDraft}
                 allowMultipleDraft={editor.allowMultipleDraft}
                 correctAnswerDraft={editor.correctAnswerDraft}
@@ -344,6 +345,7 @@ export function SessionEditorPage() {
                 onQuestionDraftChange={editor.setQuestionDraft}
                 onTypeChange={editor.handleTypeChange}
                 onOptionsDraftChange={editor.setOptionsDraft}
+                onOptionImagesDraftChange={editor.setOptionImagesDraft}
                 onChartLayoutChange={editor.setChartLayoutDraft}
                 onAllowMultipleChange={editor.setAllowMultipleDraft}
                 onCorrectAnswerChange={editor.setCorrectAnswerDraft}
@@ -356,11 +358,12 @@ export function SessionEditorPage() {
                   }
                 }}
                 onDuplicate={
-                  editor.isEditable && editor.selectedQuestionId
+                  editor.isDraft && editor.selectedQuestionId
                     ? () => editor.handleDuplicateQuestion(editor.selectedQuestionId!)
                     : undefined
                 }
                 isEditable={editor.isEditable}
+                isDraft={editor.isDraft}
                 saveStatus={editor.saveStatus}
                 slideNumber={slideNumber}
               />
@@ -372,12 +375,14 @@ export function SessionEditorPage() {
                 brandLogoUrl={editor.session.brandLogoUrl}
                 brandBackgroundImageUrl={editor.session.brandBackgroundImageUrl}
                 maxParticipants={editor.session.maxParticipants}
+                isQuizMode={editor.session.isQuizMode ?? false}
                 participantCount={editor.stats?.participantCount ?? 0}
                 responseCount={editor.stats?.responseCount ?? 0}
                 onUpdateBranding={editor.handleUpdateBranding}
                 onUploadImage={editor.handleUploadImage}
                 onRemoveImage={editor.handleRemoveImage}
                 onChangeMaxParticipants={editor.handleChangeMaxParticipants}
+                onToggleQuizMode={editor.handleToggleQuizMode}
                 onResetSession={editor.handleResetSession}
               />
             )}

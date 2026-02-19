@@ -271,6 +271,7 @@ export const duplicate = mutation({
       brandTextColor: session.brandTextColor,
       brandLogoId: session.brandLogoId,
       brandBackgroundImageId: session.brandBackgroundImageId,
+      isQuizMode: session.isQuizMode,
     })
 
     // Copy questions (without responses)
@@ -285,6 +286,7 @@ export const duplicate = mutation({
         title: q.title,
         type: q.type,
         options: q.options,
+        optionImages: q.optionImages,
         sortOrder: q.sortOrder,
         timeLimit: q.timeLimit,
         chartLayout: q.chartLayout,
@@ -295,6 +297,17 @@ export const duplicate = mutation({
     }
 
     return { sessionId: newSessionId, code }
+  },
+})
+
+// Toggle quiz mode
+export const updateQuizMode = mutation({
+  args: {
+    sessionId: v.id('sessions'),
+    isQuizMode: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.sessionId, { isQuizMode: args.isQuizMode })
   },
 })
 

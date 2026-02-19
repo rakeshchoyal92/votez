@@ -21,12 +21,22 @@ export interface AudienceBranding {
   sessionTitle?: string
 }
 
+export interface QuizScoreFeedback {
+  score: number
+  rank: number
+  totalParticipants: number
+  isCorrect?: boolean
+  correctAnswer?: string
+  pointsEarned?: number
+}
+
 export interface AudienceVotingContentProps {
   question: {
     _id: string
     title: string
     type: string
     options?: string[]
+    optionImageUrls?: (string | null)[] | null
     allowMultiple?: boolean
     chartLayout?: string
     correctAnswer?: string
@@ -44,6 +54,7 @@ export interface AudienceVotingContentProps {
   totalSeconds?: number
   size?: 'full' | 'compact'
   branding?: AudienceBranding
+  quizScore?: QuizScoreFeedback | null
 }
 
 /** Sticky branded header for audience screens. */
@@ -78,6 +89,7 @@ export function AudienceVotingContent({
   totalSeconds,
   size = 'full',
   branding,
+  quizScore,
 }: AudienceVotingContentProps) {
   const [selectedMultiple, setSelectedMultiple] = useState<Set<string>>(new Set())
   const [openText, setOpenText] = useState('')
@@ -136,6 +148,7 @@ export function AudienceVotingContent({
         totalQuestions={totalQuestions}
         submittedResults={submittedResults}
         branding={branding}
+        quizScore={quizScore}
       />
     )
   }
@@ -224,8 +237,90 @@ function CompactVoting({
       </h3>
 
       <div className="flex-1">
-        {/* MC — single select */}
-        {question.type === 'multiple_choice' && question.options && !isMultiSelect && (
+        {/* MC — image grid single select (compact) */}
+        {question.type === 'multiple_choice' && question.options && question.optionImageUrls?.some(url => url != null) && !isMultiSelect && (
+          <div className="grid grid-cols-2 gap-1.5">
+            {question.options.map((opt, i) => {
+              const imgUrl = question.optionImageUrls?.[i]
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onSubmit(opt)}
+                  className="rounded-lg border border-border/50 overflow-hidden text-left hover:border-primary/40 active:scale-[0.97] transition-all"
+                >
+                  {imgUrl && (
+                    <div className="aspect-[4/3] w-full overflow-hidden bg-muted/10">
+                      <img src={imgUrl} alt={opt} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="px-2 py-1.5">
+                    <span className="text-[10px] font-medium text-foreground">{opt || `Option ${i + 1}`}</span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* MC — image grid multi select (compact) */}
+        {question.type === 'multiple_choice' && question.options && question.optionImageUrls?.some(url => url != null) && isMultiSelect && (
+          <div className="space-y-1.5">
+            <p className="text-[8px] text-muted-foreground text-center mb-0.5">Select one or more</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {question.options.map((opt, i) => {
+                const imgUrl = question.optionImageUrls?.[i]
+                const isSelected = selectedMultiple.has(opt)
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => onToggleMulti(opt)}
+                    className={cn(
+                      'rounded-lg border overflow-hidden text-left transition-all relative',
+                      isSelected
+                        ? 'border-primary ring-1 ring-primary/20'
+                        : 'border-border/50 hover:border-primary/30 active:scale-[0.97]'
+                    )}
+                  >
+                    {isSelected && (
+                      <div className="absolute top-1 right-1 z-10 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                        <Check className="w-2.5 h-2.5 text-primary-foreground" />
+                      </div>
+                    )}
+                    {imgUrl && (
+                      <div className="aspect-[4/3] w-full overflow-hidden bg-muted/10">
+                        <img src={imgUrl} alt={opt} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="px-2 py-1.5">
+                      <span className="text-[10px] font-medium text-foreground">{opt || `Option ${i + 1}`}</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={onMultiSubmit}
+              disabled={selectedMultiple.size === 0}
+              className={cn(
+                'w-full h-7 rounded-lg flex items-center justify-center gap-1 mt-1 transition-all',
+                selectedMultiple.size > 0
+                  ? 'bg-primary text-primary-foreground active:scale-[0.98]'
+                  : 'bg-muted/30 text-muted-foreground/40'
+              )}
+            >
+              <Send className="w-2.5 h-2.5" />
+              <span className="text-[10px] font-semibold">
+                Submit{selectedMultiple.size > 0 ? ` (${selectedMultiple.size})` : ''}
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* MC — single select (text only) */}
+        {question.type === 'multiple_choice' && question.options && !question.optionImageUrls?.some(url => url != null) && !isMultiSelect && (
           <div className="space-y-1.5">
             {question.options.map((opt, i) => (
               <button
@@ -246,8 +341,8 @@ function CompactVoting({
           </div>
         )}
 
-        {/* MC — multi select */}
-        {question.type === 'multiple_choice' && question.options && isMultiSelect && (
+        {/* MC — multi select (text only) */}
+        {question.type === 'multiple_choice' && question.options && !question.optionImageUrls?.some(url => url != null) && isMultiSelect && (
           <div className="space-y-1.5">
             <p className="text-[8px] text-muted-foreground text-center mb-0.5">Select one or more</p>
             {question.options.map((opt, i) => {
@@ -369,12 +464,14 @@ function FullSubmitted({
   totalQuestions,
   submittedResults,
   branding,
+  quizScore,
 }: {
   question: AudienceVotingContentProps['question']
   questionIndex: number
   totalQuestions?: number
   submittedResults: AudienceVotingContentProps['submittedResults']
   branding?: AudienceBranding
+  quizScore?: QuizScoreFeedback | null
 }) {
   const progressLabel = totalQuestions
     ? `${questionIndex + 1} of ${totalQuestions} questions answered`
@@ -385,10 +482,54 @@ function FullSubmitted({
       <div key={"submitted-" + question._id} className="min-h-screen bg-background flex flex-col animate-fade-in">
         <AudienceHeader branding={branding} />
         <div className="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-md mx-auto">
-          <div className="w-14 h-14 bg-success/15 rounded-full flex items-center justify-center mb-4">
-            <Check className="w-7 h-7 text-success" />
-          </div>
-          <h2 className="text-lg font-bold text-foreground mb-2">Submitted!</h2>
+          {quizScore ? (
+            <>
+              <div className={cn(
+                'w-14 h-14 rounded-full flex items-center justify-center mb-4',
+                quizScore.isCorrect ? 'bg-green-500/15' : 'bg-red-500/15'
+              )}>
+                {quizScore.isCorrect ? (
+                  <Check className="w-7 h-7 text-green-600" />
+                ) : (
+                  <Star className="w-7 h-7 text-red-500" />
+                )}
+              </div>
+              <h2 className={cn(
+                'text-lg font-bold mb-1',
+                quizScore.isCorrect ? 'text-green-600 dark:text-green-400' : 'text-red-500'
+              )}>
+                {quizScore.isCorrect ? 'Correct!' : 'Incorrect'}
+              </h2>
+              {!quizScore.isCorrect && quizScore.correctAnswer && (
+                <p className="text-sm text-muted-foreground mb-2">
+                  Answer: <span className="font-medium text-green-600 dark:text-green-400">{quizScore.correctAnswer}</span>
+                </p>
+              )}
+              <div className="flex items-center gap-4 mb-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-foreground">{quizScore.pointsEarned ?? 0}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Points</p>
+                </div>
+                <div className="w-px h-8 bg-border" />
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-foreground">{quizScore.score}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total</p>
+                </div>
+                <div className="w-px h-8 bg-border" />
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-foreground">#{quizScore.rank}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Rank</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-14 h-14 bg-success/15 rounded-full flex items-center justify-center mb-4">
+                <Check className="w-7 h-7 text-success" />
+              </div>
+              <h2 className="text-lg font-bold text-foreground mb-2">Submitted!</h2>
+            </>
+          )}
           <div className="flex items-center gap-2 text-muted-foreground text-sm mb-6">
             <span className="font-semibold">
               <AnimatedCount value={submittedResults.totalResponses} className="font-semibold" />
@@ -520,8 +661,82 @@ function FullVoting({
           {question.title}
         </h2>
 
-        {/* MC — single select */}
-        {question.type === 'multiple_choice' && question.options && !isMultiSelect && (
+        {/* MC — image grid variant */}
+        {question.type === 'multiple_choice' && question.options && question.optionImageUrls?.some(url => url != null) && !isMultiSelect && (
+          <div className="w-full grid grid-cols-2 gap-3 stagger-children">
+            {question.options.map((option, i) => {
+              const imgUrl = question.optionImageUrls?.[i]
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onSubmit(option)}
+                  className="rounded-xl border-2 border-border overflow-hidden text-left hover:border-primary/40 active:scale-[0.97] transition-all group"
+                >
+                  {imgUrl && (
+                    <div className="aspect-[4/3] w-full overflow-hidden bg-muted/10">
+                      <img src={imgUrl} alt={option} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    </div>
+                  )}
+                  <div className="px-3 py-2.5">
+                    <span className="text-sm sm:text-base font-medium text-foreground">{option || `Option ${i + 1}`}</span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* MC — image grid multi-select variant */}
+        {question.type === 'multiple_choice' && question.options && question.optionImageUrls?.some(url => url != null) && isMultiSelect && (
+          <div className="w-full space-y-3">
+            <p className="text-sm text-muted-foreground text-center mb-1">Select one or more options</p>
+            <div className="grid grid-cols-2 gap-3 stagger-children">
+              {question.options.map((option, i) => {
+                const imgUrl = question.optionImageUrls?.[i]
+                const isSelected = selectedMultiple.has(option)
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => onToggleMulti(option)}
+                    className={cn(
+                      'rounded-xl border-2 overflow-hidden text-left transition-all relative',
+                      isSelected
+                        ? 'border-primary ring-2 ring-primary/20'
+                        : 'border-border hover:border-primary/30 active:scale-[0.97]'
+                    )}
+                  >
+                    {isSelected && (
+                      <div className="absolute top-2 right-2 z-10 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                        <Check className="w-3.5 h-3.5 text-primary-foreground" />
+                      </div>
+                    )}
+                    {imgUrl && (
+                      <div className="aspect-[4/3] w-full overflow-hidden bg-muted/10">
+                        <img src={imgUrl} alt={option} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="px-3 py-2.5">
+                      <span className="text-sm sm:text-base font-medium text-foreground">{option || `Option ${i + 1}`}</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            <Button
+              onClick={onMultiSubmit}
+              disabled={selectedMultiple.size === 0}
+              className="w-full h-14 text-base font-medium mt-4"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Submit ({selectedMultiple.size} selected)
+            </Button>
+          </div>
+        )}
+
+        {/* MC — single select (text only) */}
+        {question.type === 'multiple_choice' && question.options && !question.optionImageUrls?.some(url => url != null) && !isMultiSelect && (
           <div className="w-full space-y-3 stagger-children">
             {question.options.map((option, i) => (
               <Button
@@ -536,8 +751,8 @@ function FullVoting({
           </div>
         )}
 
-        {/* MC — multi select */}
-        {question.type === 'multiple_choice' && question.options && isMultiSelect && (
+        {/* MC — multi select (text only) */}
+        {question.type === 'multiple_choice' && question.options && !question.optionImageUrls?.some(url => url != null) && isMultiSelect && (
           <div className="w-full space-y-3">
             <p className="text-sm text-muted-foreground text-center mb-1">Select one or more options</p>
             <div className="space-y-3 stagger-children">

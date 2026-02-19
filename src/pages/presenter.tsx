@@ -11,6 +11,7 @@ import {
   Loader2,
   StopCircle,
   Play,
+  RotateCcw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PresenterView } from '@/components/shared'
@@ -28,6 +29,16 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { AnimatedCount } from '@/components/animated-count'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import type { ChartLayout } from '@/components/chart-type-selector'
 
 const REACTION_KEYS: Record<string, ReactionType> = {
@@ -64,6 +75,9 @@ export function PresenterPage() {
   const [themeOverride, setThemeOverride] = useState<ThemePreset | null>(null)
   const [showShortcutOverlay, setShowShortcutOverlay] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [showEndConfirm, setShowEndConfirm] = useState(false)
+  const [showReopenConfirm, setShowReopenConfirm] = useState(false)
 
   // Sync fullscreen state with browser
   useEffect(() => {
@@ -116,6 +130,13 @@ export function PresenterPage() {
   const results = useQuery(
     api.responses.getResults,
     activeQuestionId ? { questionId: activeQuestionId } : 'skip'
+  )
+
+  // Quiz mode leaderboard
+  const isQuizMode = session?.isQuizMode ?? false
+  const leaderboardData = useQuery(
+    api.responses.getLeaderboard,
+    isQuizMode ? { sessionId: sessionId as Id<'sessions'> } : 'skip'
   )
 
   // Timer for timed questions
@@ -179,16 +200,42 @@ export function PresenterPage() {
     }
   }
 
-  const handleEnd = async () => {
+  const handleEnd = () => {
+    setShowEndConfirm(true)
+  }
+
+  const confirmEnd = async () => {
+    setShowEndConfirm(false)
     await updateStatus({
       sessionId: sessionId as Id<'sessions'>,
       status: 'ended',
     })
   }
 
+  const handleReopen = async () => {
+    setShowReopenConfirm(false)
+    await updateStatus({
+      sessionId: sessionId as Id<'sessions'>,
+      status: 'active',
+    })
+    // Re-activate the last question if there was one
+    if (session?.activeQuestionId) {
+      await setActiveQuestionMutation({
+        sessionId: sessionId as Id<'sessions'>,
+        questionId: session.activeQuestionId,
+      })
+    } else if (sortedQuestions.length > 0) {
+      await setActiveQuestionMutation({
+        sessionId: sessionId as Id<'sessions'>,
+        questionId: sortedQuestions[0]._id,
+      })
+    }
+  }
+
   const handlePrev = async () => {
     if (activeIndex > 0) {
       setChartOverride(null)
+      setShowLeaderboard(false)
       await setActiveQuestionMutation({
         sessionId: sessionId as Id<'sessions'>,
         questionId: sortedQuestions[activeIndex - 1]._id,
@@ -199,6 +246,7 @@ export function PresenterPage() {
   const handleNext = async () => {
     if (activeIndex < sortedQuestions.length - 1) {
       setChartOverride(null)
+      setShowLeaderboard(false)
       await setActiveQuestionMutation({
         sessionId: sessionId as Id<'sessions'>,
         questionId: sortedQuestions[activeIndex + 1]._id,
@@ -231,11 +279,12 @@ export function PresenterPage() {
       if (e.key === 'ArrowLeft') handlePrev()
       else if (e.key === 'ArrowRight') handleNext()
       else if (e.key === 'q' || e.key === 'Q') setShowQRSidebar((s) => !s)
+      else if (e.key === 'l' || e.key === 'L') { if (isQuizMode) setShowLeaderboard(s => !s) }
       else if (e.key === 'f' || e.key === 'F') handleToggleFullscreen()
       else if (REACTION_KEYS[e.key]) triggerReaction(REACTION_KEYS[e.key])
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isActive, handlePrev, handleNext, navigate, sessionId, triggerReaction, handleToggleFullscreen, showShortcutOverlay]
+    [isActive, handlePrev, handleNext, navigate, sessionId, triggerReaction, handleToggleFullscreen, showShortcutOverlay, isQuizMode]
   )
 
   useEffect(() => {
@@ -312,6 +361,15 @@ export function PresenterPage() {
           </p>
           <div className="flex items-center gap-3">
             <Button
+              variant="default"
+              size="lg"
+              onClick={() => setShowReopenConfirm(true)}
+              className="gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reopen Session
+            </Button>
+            <Button
               variant="secondary"
               size="lg"
               onClick={() => navigate(`/session/${sessionId}`)}
@@ -326,6 +384,24 @@ export function PresenterPage() {
               Dashboard
             </Button>
           </div>
+
+          {/* Reopen confirmation */}
+          <AlertDialog open={showReopenConfirm} onOpenChange={setShowReopenConfirm}>
+            <AlertDialogContent className="dark">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reopen this session?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  The session will become live again and participants can resume submitting responses. Existing responses are preserved.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleReopen}>
+                  Reopen Session
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     )
@@ -375,10 +451,35 @@ export function PresenterPage() {
         onResetResults={handleResetResults}
         isFullscreen={isFullscreen}
         onToggleFullscreen={handleToggleFullscreen}
+        isQuizMode={isQuizMode}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard(s => !s)}
+        leaderboard={leaderboardData ?? []}
       />
       {showShortcutOverlay && (
         <ShortcutOverlay onClose={() => setShowShortcutOverlay(false)} />
       )}
+
+      {/* End session confirmation */}
+      <AlertDialog open={showEndConfirm} onOpenChange={setShowEndConfirm}>
+        <AlertDialogContent className="dark">
+          <AlertDialogHeader>
+            <AlertDialogTitle>End this session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Participants will no longer be able to submit responses. You can reopen the session later if needed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmEnd}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              End Session
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
@@ -387,6 +488,7 @@ export function PresenterPage() {
 const SHORTCUTS = [
   { key: '← →', action: 'Previous / Next question' },
   { key: 'Q', action: 'Toggle QR sidebar' },
+  { key: 'L', action: 'Toggle leaderboard (quiz)' },
   { key: 'F', action: 'Toggle fullscreen' },
   { key: 'ESC', action: 'Back to editor' },
   { key: '1', action: 'Drumroll' },

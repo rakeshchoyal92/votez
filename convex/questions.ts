@@ -1,14 +1,25 @@
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 
-// List questions for a session
+// List questions for a session (resolves option image URLs)
 export const listBySession = query({
   args: { sessionId: v.id('sessions') },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const questions = await ctx.db
       .query('questions')
       .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
       .collect()
+
+    return Promise.all(
+      questions.map(async (q) => {
+        const optionImageUrls = q.optionImages
+          ? await Promise.all(
+              q.optionImages.map((id) => (id ? ctx.storage.getUrl(id) : null))
+            )
+          : null
+        return { ...q, optionImageUrls }
+      })
+    )
   },
 })
 
@@ -32,6 +43,7 @@ export const create = mutation({
       v.literal('rating')
     ),
     options: v.optional(v.array(v.string())),
+    optionImages: v.optional(v.array(v.string())),
     timeLimit: v.optional(v.number()),
     chartLayout: v.optional(v.union(v.literal('bars'), v.literal('donut'), v.literal('pie'))),
     allowMultiple: v.optional(v.boolean()),
@@ -56,6 +68,7 @@ export const create = mutation({
       title: args.title,
       type: args.type,
       options: args.options,
+      optionImages: args.optionImages,
       sortOrder,
       timeLimit: args.timeLimit,
       chartLayout: args.chartLayout,
@@ -80,6 +93,7 @@ export const update = mutation({
       )
     ),
     options: v.optional(v.array(v.string())),
+    optionImages: v.optional(v.array(v.string())),
     timeLimit: v.optional(v.number()),
     chartLayout: v.optional(v.union(v.literal('bars'), v.literal('donut'), v.literal('pie'))),
     allowMultiple: v.optional(v.boolean()),
@@ -91,12 +105,25 @@ export const update = mutation({
     const question = await ctx.db.get(questionId)
     if (!question) throw new Error('Question not found')
     const session = await ctx.db.get(question.sessionId)
-    if (session?.status !== 'draft') {
-      throw new Error('Cannot modify questions — session is not in draft')
+    if (!session || session.status === 'ended') {
+      throw new Error('Cannot modify questions — session has ended')
     }
 
     const isMC = (updates.type ?? question.type) === 'multiple_choice'
 
+    // When live, only allow safe field updates (title, correctAnswer, showResults, timeLimit, chartLayout)
+    if (session.status === 'active') {
+      await ctx.db.patch(questionId, {
+        ...(updates.title !== undefined && { title: updates.title }),
+        ...(updates.showResults !== undefined && { showResults: updates.showResults }),
+        ...(updates.timeLimit !== undefined && { timeLimit: updates.timeLimit > 0 ? updates.timeLimit : undefined }),
+        ...(isMC && updates.correctAnswer !== undefined && { correctAnswer: updates.correctAnswer }),
+        ...(isMC && updates.chartLayout !== undefined && { chartLayout: updates.chartLayout }),
+      })
+      return
+    }
+
+    // Draft mode: full editing
     await ctx.db.patch(questionId, {
       ...(updates.title !== undefined && { title: updates.title }),
       ...(updates.type !== undefined && { type: updates.type }),
@@ -104,6 +131,7 @@ export const update = mutation({
       ...(updates.timeLimit !== undefined && { timeLimit: updates.timeLimit > 0 ? updates.timeLimit : undefined }),
       // MC-specific fields: save when MC, clear when not
       options: isMC ? (updates.options ?? question.options) : undefined,
+      optionImages: isMC ? (updates.optionImages ?? question.optionImages) : undefined,
       chartLayout: isMC ? (updates.chartLayout ?? question.chartLayout) : undefined,
       allowMultiple: isMC ? (updates.allowMultiple ?? question.allowMultiple) : undefined,
       correctAnswer: isMC ? (updates.correctAnswer ?? question.correctAnswer) : undefined,

@@ -94,13 +94,19 @@ function generateAnswer(question: {
   type: string
   options?: string[]
   allowMultiple?: boolean
+  correctAnswer?: string
 }): string {
   switch (question.type) {
     case 'multiple_choice': {
       const options = question.options ?? []
       if (options.length === 0) return ''
-      // Create roughly equal weights with some variance
-      const weights = options.map(() => 10 + Math.floor(Math.random() * 30))
+      // Bias weights toward correct answer (~65% correct) when it exists
+      const weights = options.map((opt) => {
+        if (question.correctAnswer && opt === question.correctAnswer) {
+          return 50 + Math.floor(Math.random() * 20) // heavy weight for correct
+        }
+        return 10 + Math.floor(Math.random() * 15) // lighter weight for others
+      })
       if (question.allowMultiple) {
         return multiPick(options, weights)
       }
@@ -171,6 +177,7 @@ export const seedResponses = mutation({
 
     // For each question, generate a response per participant
     for (const question of questions) {
+      const questionStart = timestamp - 60000 // simulate question started 60s ago
       for (const participantId of participantIds) {
         const answer = generateAnswer(question)
         if (!answer) continue
@@ -181,6 +188,7 @@ export const seedResponses = mutation({
           participantId,
           answer,
           answeredAt: timestamp - Math.floor(Math.random() * 30000),
+          questionStartedAt: questionStart,
         })
         responsesCreated++
       }

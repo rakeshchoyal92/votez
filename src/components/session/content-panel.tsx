@@ -29,6 +29,7 @@ interface ContentPanelProps {
   questionDraft: string
   typeDraft: QuestionType
   optionsDraft: string[]
+  optionImagesDraft?: string[]
   chartLayoutDraft: ChartLayout
   allowMultipleDraft: boolean
   correctAnswerDraft: string
@@ -37,6 +38,7 @@ interface ContentPanelProps {
   onQuestionDraftChange: (val: string) => void
   onTypeChange: (type: QuestionType) => void
   onOptionsDraftChange: (opts: string[]) => void
+  onOptionImagesDraftChange?: (images: string[]) => void
   onChartLayoutChange: (val: ChartLayout) => void
   onAllowMultipleChange: (val: boolean) => void
   onCorrectAnswerChange: (val: string) => void
@@ -46,6 +48,7 @@ interface ContentPanelProps {
   onDelete: () => void
   onDuplicate?: () => void
   isEditable: boolean
+  isDraft?: boolean
   saveStatus?: SaveStatus
   slideNumber?: number
 }
@@ -81,6 +84,7 @@ function ContentBody({
   question,
   typeDraft,
   optionsDraft,
+  optionImagesDraft,
   chartLayoutDraft,
   allowMultipleDraft,
   correctAnswerDraft,
@@ -88,6 +92,7 @@ function ContentBody({
   timeLimitDraft,
   onTypeChange,
   onOptionsDraftChange,
+  onOptionImagesDraftChange,
   onChartLayoutChange,
   onAllowMultipleChange,
   onCorrectAnswerChange,
@@ -96,6 +101,7 @@ function ContentBody({
   onDelete,
   onDuplicate,
   isEditable,
+  isDraft = isEditable,
   saveStatus,
   slideNumber,
 }: ContentPanelProps) {
@@ -127,16 +133,16 @@ function ContentBody({
                   <button
                     key={qt.type}
                     type="button"
-                    disabled={!isEditable}
+                    disabled={!isDraft}
                     onClick={() => onTypeChange(qt.type)}
                     className={cn(
                       'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all text-[11px] font-medium',
                       isActive
                         ? 'border-primary bg-primary/5 text-primary'
-                        : isEditable
+                        : isDraft
                           ? 'border-border/30 text-muted-foreground/50 hover:border-primary/30 hover:text-muted-foreground'
                           : 'border-border/30 text-muted-foreground/50',
-                      isEditable ? 'cursor-pointer' : 'cursor-default'
+                      isDraft ? 'cursor-pointer' : 'cursor-default'
                     )}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -151,9 +157,14 @@ function ContentBody({
           {isMC && (
             <SettingsCard>
               <SectionLabel>Answer options</SectionLabel>
-              {isEditable ? (
+              {isDraft ? (
                 <>
-                  <SortableOptions options={optionsDraft} onChange={onOptionsDraftChange} />
+                  <SortableOptions
+                    options={optionsDraft}
+                    onChange={onOptionsDraftChange}
+                    optionImages={optionImagesDraft}
+                    onImageChange={onOptionImagesDraftChange}
+                  />
                   {optionsDraft.length < 8 && (
                     <Button
                       variant="ghost"
@@ -221,8 +232,8 @@ function ContentBody({
               </div>
             )}
 
-            {/* Allow multiple — MC only */}
-            {isMC && isEditable && (
+            {/* Allow multiple — MC only (structural: draft only) */}
+            {isMC && isDraft && (
               <div className="flex items-center gap-2.5">
                 <Checkbox
                   id="allow-multiple"
@@ -303,8 +314,8 @@ function ContentBody({
             </SettingsCard>
           )}
 
-          {/* ── Duplicate button ── */}
-          {isEditable && onDuplicate && (
+          {/* ── Duplicate button (draft only) ── */}
+          {isDraft && onDuplicate && (
             <Button
               variant="outline"
               size="sm"
@@ -316,8 +327,8 @@ function ContentBody({
             </Button>
           )}
 
-          {/* ── Danger zone ── */}
-          {isEditable && (
+          {/* ── Danger zone (draft only) ── */}
+          {isDraft && (
             <div className="rounded-lg border border-destructive/20 p-3">
               <Button
                 variant="ghost"

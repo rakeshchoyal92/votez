@@ -40,6 +40,7 @@ export const submit = mutation({
       await ctx.db.patch(existing._id, {
         answer: args.answer,
         answeredAt: Date.now(),
+        questionStartedAt: session.questionStartedAt,
       })
       return existing._id
     }
@@ -50,6 +51,7 @@ export const submit = mutation({
       participantId: args.participantId,
       answer: args.answer,
       answeredAt: Date.now(),
+      questionStartedAt: session.questionStartedAt,
     })
   },
 })
@@ -156,6 +158,131 @@ export const getResponseCountsBySession = query({
       counts[r.questionId] = (counts[r.questionId] || 0) + 1
     }
     return counts
+  },
+})
+
+// ═══════════════════════════════════════════════════════════
+//  Quiz mode: leaderboard + participant score
+// ═══════════════════════════════════════════════════════════
+
+function computeQuizScore(
+  answeredAt: number,
+  questionStartedAt: number | undefined,
+  timeLimit: number | undefined
+): number {
+  const BASE = 1000
+  const MAX_BONUS = 500
+  if (!questionStartedAt || !timeLimit || timeLimit <= 0) return BASE
+  const elapsed = (answeredAt - questionStartedAt) / 1000
+  const fraction = Math.min(1, Math.max(0, elapsed / timeLimit))
+  return Math.round(BASE + MAX_BONUS * (1 - fraction))
+}
+
+// Get leaderboard for a session (quiz mode)
+export const getLeaderboard = query({
+  args: { sessionId: v.id('sessions') },
+  handler: async (ctx, args) => {
+    const questions = await ctx.db
+      .query('questions')
+      .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
+      .collect()
+
+    const responses = await ctx.db
+      .query('responses')
+      .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
+      .collect()
+
+    const participants = await ctx.db
+      .query('participants')
+      .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
+      .collect()
+
+    // Build lookup: questionId → question
+    const questionMap = new Map(questions.map((q) => [q._id, q]))
+
+    // Aggregate scores per participant
+    const scores: Record<string, number> = {}
+    for (const r of responses) {
+      const question = questionMap.get(r.questionId)
+      if (!question || question.type !== 'multiple_choice' || !question.correctAnswer) continue
+      if (r.answer !== question.correctAnswer) continue
+
+      const pts = computeQuizScore(r.answeredAt, r.questionStartedAt, question.timeLimit)
+      scores[r.participantId] = (scores[r.participantId] || 0) + pts
+    }
+
+    // Build ranked list
+    const participantMap = new Map(participants.map((p) => [p._id, p]))
+    const entries = participants.map((p) => ({
+      participantId: p._id,
+      name: p.name || 'Anonymous',
+      score: scores[p._id] || 0,
+      rank: 0,
+    }))
+    entries.sort((a, b) => b.score - a.score)
+    entries.forEach((e, i) => { e.rank = i + 1 })
+
+    return entries
+  },
+})
+
+// Get a single participant's score + rank (quiz mode)
+export const getParticipantScore = query({
+  args: {
+    sessionId: v.id('sessions'),
+    participantId: v.id('participants'),
+  },
+  handler: async (ctx, args) => {
+    const questions = await ctx.db
+      .query('questions')
+      .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
+      .collect()
+
+    const responses = await ctx.db
+      .query('responses')
+      .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
+      .collect()
+
+    const participants = await ctx.db
+      .query('participants')
+      .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
+      .collect()
+
+    const questionMap = new Map(questions.map((q) => [q._id, q]))
+
+    // Compute all scores
+    const scores: Record<string, number> = {}
+    const lastCorrect: Record<string, { isCorrect: boolean; correctAnswer?: string; points: number }> = {}
+    for (const r of responses) {
+      const question = questionMap.get(r.questionId)
+      if (!question || question.type !== 'multiple_choice' || !question.correctAnswer) continue
+      const isCorrect = r.answer === question.correctAnswer
+      if (isCorrect) {
+        const pts = computeQuizScore(r.answeredAt, r.questionStartedAt, question.timeLimit)
+        scores[r.participantId] = (scores[r.participantId] || 0) + pts
+      }
+      // Track last answer for the requested participant
+      if (r.participantId === args.participantId) {
+        lastCorrect[r.questionId] = {
+          isCorrect,
+          correctAnswer: question.correctAnswer,
+          points: isCorrect ? computeQuizScore(r.answeredAt, r.questionStartedAt, question.timeLimit) : 0,
+        }
+      }
+    }
+
+    // Rank
+    const ranked = participants
+      .map((p) => ({ id: p._id, score: scores[p._id] || 0 }))
+      .sort((a, b) => b.score - a.score)
+    const rank = ranked.findIndex((e) => e.id === args.participantId) + 1
+
+    return {
+      score: scores[args.participantId] || 0,
+      rank,
+      totalParticipants: participants.length,
+      lastCorrect,
+    }
   },
 })
 

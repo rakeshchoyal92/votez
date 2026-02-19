@@ -19,6 +19,7 @@ export default defineSchema({
     brandTextColor: v.optional(v.string()),
     brandLogoId: v.optional(v.string()),             // Convex storage ID
     brandBackgroundImageId: v.optional(v.string()),   // Convex storage ID
+    isQuizMode: v.optional(v.boolean()),               // Enable quiz scoring + leaderboard
   })
     .index('by_code', ['code'])
     .index('by_presenter', ['presenterId'])
@@ -35,6 +36,7 @@ export default defineSchema({
       v.literal('rating')
     ),
     options: v.optional(v.array(v.string())), // For multiple_choice
+    optionImages: v.optional(v.array(v.string())), // Convex storage IDs, parallel to options[]
     sortOrder: v.number(),
     timeLimit: v.optional(v.number()), // seconds, 0 = no limit
     chartLayout: v.optional(v.union(v.literal('bars'), v.literal('donut'), v.literal('pie'))),
@@ -64,6 +66,7 @@ export default defineSchema({
     participantId: v.id('participants'),
     answer: v.string(), // option text, word, open text, or rating number
     answeredAt: v.number(),
+    questionStartedAt: v.optional(v.number()), // snapshot for quiz scoring
   })
     .index('by_question', ['questionId'])
     .index('by_question_participant', ['questionId', 'participantId'])

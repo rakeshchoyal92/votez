@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { RotateCcw, Loader2, Check } from 'lucide-react'
+import { RotateCcw, Loader2, Check, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { SettingsCard, SectionLabel } from './content-panel'
@@ -54,6 +55,10 @@ interface SessionSettingsPanelProps {
   // Limits
   maxParticipants?: number
 
+  // Quiz mode
+  isQuizMode: boolean
+  onToggleQuizMode: (val: boolean) => void
+
   // Stats (for reset confirmation)
   participantCount: number
   responseCount: number
@@ -77,6 +82,8 @@ export function SessionSettingsPanel({
   brandLogoUrl,
   brandBackgroundImageUrl,
   maxParticipants,
+  isQuizMode,
+  onToggleQuizMode,
   participantCount,
   responseCount,
   onUpdateBranding,
@@ -200,6 +207,29 @@ export function SessionSettingsPanel({
               onUpload={(id) => onUploadImage('brandBackgroundImageId', id)}
               onRemove={() => onRemoveImage('brandBackgroundImageId')}
             />
+          </SettingsCard>
+
+          {/* Quiz mode */}
+          <SettingsCard>
+            <SectionLabel>Quiz mode</SectionLabel>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-3.5 h-3.5 text-amber-500/60" />
+                <Label htmlFor="quiz-mode" className="text-[13px] text-foreground cursor-pointer">
+                  Enable quiz scoring
+                </Label>
+              </div>
+              <Switch
+                id="quiz-mode"
+                checked={isQuizMode}
+                onCheckedChange={onToggleQuizMode}
+              />
+            </div>
+            {isQuizMode && (
+              <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
+                MC questions with a correct answer will score points. A leaderboard is shown between questions.
+              </p>
+            )}
           </SettingsCard>
 
           {/* Limits */}

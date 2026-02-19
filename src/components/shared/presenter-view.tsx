@@ -21,9 +21,12 @@ import {
   Maximize2,
   Minimize2,
   CheckCircle2,
+  Trophy,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PresenterQuestionContent } from './presenter-question-content'
+import { LeaderboardDisplay } from '@/components/leaderboard-display'
+import type { LeaderboardEntry } from '@/components/leaderboard-display'
 import { AnimatedCount } from '@/components/animated-count'
 import { ReactionOverlay, ReactionToolbar } from '@/components/reactions'
 import type { ReactionType } from '@/hooks/useReactions'
@@ -369,6 +372,12 @@ export interface PresenterViewProps {
   // Fullscreen
   isFullscreen?: boolean
   onToggleFullscreen?: () => void
+
+  // Leaderboard (quiz mode)
+  isQuizMode?: boolean
+  showLeaderboard?: boolean
+  onToggleLeaderboard?: () => void
+  leaderboard?: LeaderboardEntry[]
 }
 
 function buildBrandingStyle(branding?: SessionBranding): React.CSSProperties {
@@ -630,6 +639,10 @@ function FullPresenterView({
   onResetResults,
   isFullscreen,
   onToggleFullscreen,
+  isQuizMode,
+  showLeaderboard,
+  onToggleLeaderboard,
+  leaderboard,
 }: PresenterViewProps) {
   const brandingStyle = buildBrandingStyle(branding)
   const richStyles = buildRichThemeStyle(activeRichTheme)
@@ -804,7 +817,16 @@ function FullPresenterView({
               style={timerStyle}
             />
             <div className="flex flex-col items-center justify-center h-full px-8 lg:px-12 py-6">
-              {activeQuestion ? (
+              {showLeaderboard && leaderboard ? (
+                <div className="w-full max-w-2xl flex flex-col flex-1 min-h-0 animate-fade-in">
+                  <h2 className="text-3xl sm:text-4xl font-bold text-foreground text-center mb-6">
+                    Leaderboard
+                  </h2>
+                  <div className="flex-1 flex flex-col justify-center min-h-0 overflow-auto">
+                    <LeaderboardDisplay entries={leaderboard} size="lg" />
+                  </div>
+                </div>
+              ) : activeQuestion ? (
                 <div
                   className="w-full max-w-7xl flex flex-col flex-1 min-h-0"
                 >
@@ -920,6 +942,29 @@ function FullPresenterView({
               onTrigger={onTriggerReaction}
               activeReaction={activeReaction}
             />
+
+            {/* Leaderboard toggle (quiz mode only) */}
+            {isQuizMode && onToggleLeaderboard && (
+              <>
+                <div className="w-px h-5 bg-foreground/[0.08] mx-1" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={onToggleLeaderboard}
+                      className={cn(
+                        'w-9 h-9 rounded-full flex items-center justify-center transition-all',
+                        showLeaderboard
+                          ? 'bg-amber-500/20 text-amber-400'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-foreground/[0.08]'
+                      )}
+                    >
+                      <Trophy className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Toggle leaderboard (L)</TooltipContent>
+                </Tooltip>
+              </>
+            )}
 
             {/* Slide counter */}
             <div className="w-px h-5 bg-foreground/[0.08] mx-1" />

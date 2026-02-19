@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useSessionAnalytics } from '@/hooks/useSessionAnalytics'
 import { OverviewCards } from '@/components/analytics/overview-cards'
+import { SessionTimelineChart } from '@/components/analytics/session-timeline-chart'
 import { QuestionAnalyticsList } from '@/components/analytics/question-analytics-list'
 import { ParticipantTable } from '@/components/analytics/participant-table'
 
@@ -116,6 +117,13 @@ export function SessionAnalyticsPage() {
               sessionDuration={analytics.sessionAnalytics?.sessionDuration ?? null}
             />
           </section>
+
+          {/* Response Flow Timeline */}
+          {analytics.responseTimeline && analytics.responseTimeline.some(qt => qt.responses.length > 0) && (
+            <section>
+              <SessionTimelineChart timeline={analytics.responseTimeline} />
+            </section>
+          )}
 
           {/* Question Analytics */}
           <section>

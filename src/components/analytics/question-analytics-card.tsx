@@ -10,6 +10,7 @@ import { OpenEndedResults } from '@/components/open-ended-results'
 import { RatingResults } from '@/components/rating-results'
 import { ResponseTimelineChart } from './response-timeline-chart'
 import { Card } from '@/components/ui/card'
+import { getChartColor } from '@/lib/utils'
 
 const TYPE_CONFIG: Record<string, { label: string; icon: typeof ListChecks }> = {
   multiple_choice: { label: 'Multiple Choice', icon: ListChecks },
@@ -138,11 +139,14 @@ export function QuestionAnalyticsCard({
 
             {/* Response timeline sparkline */}
             {timeline && timeline.length > 1 && (
-              <div className="pt-3 border-t border-border/40">
-                <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
+              <div className="pt-4 border-t border-border/40">
+                <p className="text-[10px] font-semibold text-muted-foreground/50 mb-2 uppercase tracking-wider">
                   Response Timeline
                 </p>
-                <ResponseTimelineChart responses={timeline} />
+                <ResponseTimelineChart
+                  responses={timeline}
+                  accentColor={getChartColor(index)}
+                />
               </div>
             )}
           </div>

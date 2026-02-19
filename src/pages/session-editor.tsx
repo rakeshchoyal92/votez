@@ -1,6 +1,8 @@
-import { useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { Loader2, ArrowLeft, Pencil, Play, Eye, Users, Settings, BarChart3 } from 'lucide-react'
+import { useMutation } from 'convex/react'
+import { api } from '../../convex/_generated/api'
+import { Loader2, ArrowLeft, Pencil, Play, Eye, Users, Settings, BarChart3, RotateCcw } from 'lucide-react'
 import type { Id } from '../../convex/_generated/dataModel'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -20,11 +22,31 @@ import { DeleteQuestionDialog } from '@/components/session/delete-question-dialo
 import { ShareDropdown } from '@/components/session/share-dropdown'
 import { SimulateDialog } from '@/components/session/simulate-dialog'
 import { SessionSettingsPanel } from '@/components/session/session-settings-panel'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export function SessionEditorPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
   const editor = useSessionEditor(sessionId as Id<'sessions'>)
+  const updateStatus = useMutation(api.sessions.updateStatus)
+  const [showReopenConfirm, setShowReopenConfirm] = useState(false)
+
+  const handleReopen = async () => {
+    setShowReopenConfirm(false)
+    await updateStatus({
+      sessionId: sessionId as Id<'sessions'>,
+      status: 'active',
+    })
+  }
 
   // --- Keyboard shortcuts ---
   const isInputFocused = useCallback(() => {
@@ -272,6 +294,18 @@ export function SessionEditorPage() {
               </>
             )}
 
+            {editor.isEnded && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs font-medium"
+                onClick={() => setShowReopenConfirm(true)}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reopen
+              </Button>
+            )}
+
             {(editor.isLive || editor.isEnded) && (
               <Button
                 variant={editor.isEnded ? 'default' : 'outline'}
@@ -390,6 +424,7 @@ export function SessionEditorPage() {
         </div>
 
         {/* Delete dialog */}
+        {/* Delete dialog */}
         <DeleteQuestionDialog
           questionId={editor.deletingQuestionId}
           responseCount={
@@ -403,6 +438,24 @@ export function SessionEditorPage() {
           }}
           onCancel={() => editor.setDeletingQuestionId(null)}
         />
+
+        {/* Reopen confirmation */}
+        <AlertDialog open={showReopenConfirm} onOpenChange={setShowReopenConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reopen this session?</AlertDialogTitle>
+              <AlertDialogDescription>
+                The session will become live again and participants can resume submitting responses. Existing responses are preserved.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleReopen}>
+                Reopen Session
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TooltipProvider>
   )

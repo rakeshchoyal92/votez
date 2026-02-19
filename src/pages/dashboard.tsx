@@ -10,12 +10,8 @@ import {
   Trash2,
   Play,
   Copy,
-  Loader2,
   Presentation,
   MoreHorizontal,
-  Users,
-  MessageSquare,
-  HelpCircle,
   ExternalLink,
   Pencil,
   Search,
@@ -27,8 +23,6 @@ import { timeAgo, cn } from '@/lib/utils'
 import { CreateSessionDialog } from '@/components/create-session-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   DropdownMenu,
@@ -56,21 +50,15 @@ import {
 const STATUS_CONFIG = {
   draft: {
     label: 'Draft',
-    variant: 'secondary' as const,
     dot: 'bg-muted-foreground',
-    cardClass: ''
   },
   active: {
     label: 'Live',
-    variant: 'success' as const,
     dot: 'bg-green-500',
-    cardClass: 'border-green-500/30 shadow-green-500/10 shadow-lg'
   },
   ended: {
     label: 'Ended',
-    variant: 'outline' as const,
     dot: 'bg-muted-foreground/50',
-    cardClass: 'opacity-75'
   },
 }
 
@@ -125,8 +113,6 @@ export function DashboardPage() {
     })
   }, [sessions, search, statusFilter])
 
-  const hasActiveFilters = search !== '' || statusFilter !== 'all'
-
   const clearFilters = () => {
     setSearch('')
     setStatusFilter('all')
@@ -166,57 +152,98 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="px-4 sm:px-6 py-6 max-w-7xl mx-auto">
+    <div className="px-4 sm:px-6 py-6 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Sessions</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Create and manage your polling sessions
-          </p>
+      <div className="flex items-center justify-between gap-4 mb-5">
+        <div className="flex items-baseline gap-2">
+          <h1 className="text-sm font-semibold text-foreground">Sessions</h1>
+          {sessions && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {sessions.length}
+            </span>
+          )}
         </div>
-        <Button
-          onClick={() => setShowCreateDialog(true)}
-          className="shadow-sm gap-2 w-full sm:w-auto"
-        >
-          <Plus className="w-4 h-4" />
-          New Session
-        </Button>
+
+        <div className="flex items-center gap-2">
+          {/* Search — only when sessions exist */}
+          {sessions && sessions.length > 0 && (
+            <div className="relative hidden sm:block">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value || '')}
+                placeholder="Search..."
+                className="h-7 w-44 pl-8 pr-7 text-xs border-transparent bg-muted/50 focus:border-border focus:bg-background"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded-sm hover:bg-muted transition-colors"
+                >
+                  <X className="w-3 h-3 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Status filters */}
+          {sessions && sessions.length > 0 && (
+            <div className="hidden sm:flex items-center gap-0.5 rounded-md bg-muted/50 p-0.5">
+              {STATUS_FILTERS.map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className={cn(
+                    'px-2 py-1 text-xs font-medium rounded transition-all',
+                    statusFilter === status
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {STATUS_FILTER_LABELS[status]}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <Button
+            onClick={() => setShowCreateDialog(true)}
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            New Session
+          </Button>
+        </div>
       </div>
 
-      {/* Create session dialog */}
-      <CreateSessionDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
-
-      {/* Search & filters — only show when sessions exist */}
+      {/* Mobile search & filters */}
       {sessions && sessions.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
-          {/* Search */}
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="flex flex-col gap-2 mb-4 sm:hidden">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value || '')}
-              placeholder="Search sessions..."
-              className="pl-9 pr-8"
+              placeholder="Search..."
+              className="h-8 pl-8 pr-7 text-xs border-transparent bg-muted/50 focus:border-border focus:bg-background"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-sm hover:bg-muted transition-colors"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded-sm hover:bg-muted transition-colors"
               >
-                <X className="w-3.5 h-3.5 text-muted-foreground" />
+                <X className="w-3 h-3 text-muted-foreground" />
               </button>
             )}
           </div>
-
-          {/* Status tabs */}
-          <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+          <div className="flex items-center gap-0.5 rounded-md bg-muted/50 p-0.5">
             {STATUS_FILTERS.map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
                 className={cn(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
+                  'flex-1 px-2 py-1 text-xs font-medium rounded transition-all text-center',
                   statusFilter === status
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
@@ -226,80 +253,76 @@ export function DashboardPage() {
               </button>
             ))}
           </div>
-
-          {/* Count */}
-          {filteredSessions && (
-            <span className="text-sm text-muted-foreground ml-auto">
-              Showing {filteredSessions.length} of {sessions.length} session{sessions.length !== 1 ? 's' : ''}
-            </span>
-          )}
         </div>
       )}
 
-      {/* Sessions grid */}
+      {/* Create session dialog */}
+      <CreateSessionDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
+
+      {/* Sessions list */}
       {sessions === undefined ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="p-6">
-              <Skeleton className="h-5 w-3/4 mb-3" />
-              <Skeleton className="h-4 w-1/2 mb-4" />
-              <div className="flex items-center gap-4 mb-4">
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-4 w-16" />
+        /* Skeleton loading — row-shaped */
+        <div className="rounded-lg border divide-y animate-in fade-in-0 duration-200">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 px-4 py-3">
+              <Skeleton className="h-2 w-2 rounded-full shrink-0" />
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-3.5 w-16 hidden sm:block" />
+              <div className="hidden sm:flex items-center gap-3 ml-auto">
+                <Skeleton className="h-3.5 w-10" />
+                <Skeleton className="h-3.5 w-10" />
+                <Skeleton className="h-3.5 w-10" />
               </div>
-              <Skeleton className="h-9 w-full" />
-            </Card>
+              <Skeleton className="h-3.5 w-12 ml-auto sm:ml-0" />
+            </div>
           ))}
         </div>
       ) : sessions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/60 py-16 sm:py-24 px-6 animate-in fade-in-0 duration-300">
-          <div className="relative mb-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/5 rounded-2xl flex items-center justify-center">
-              <Presentation className="w-8 h-8 text-primary" />
-            </div>
-            <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
-              <Plus className="w-4 h-4 text-primary" />
-            </div>
-          </div>
-          <h3 className="text-lg font-semibold text-foreground mb-1.5">
-            No sessions yet
-          </h3>
-          <p className="text-sm text-muted-foreground mb-6 max-w-sm text-center">
-            Create your first polling session and start engaging your audience in real-time.
+        /* Empty state — no sessions at all */
+        <div className="flex flex-col items-center justify-center py-20 animate-in fade-in-0 duration-300">
+          <Presentation className="w-8 h-8 text-muted-foreground/60 mb-3" />
+          <p className="text-sm font-medium text-foreground mb-1">No sessions yet</p>
+          <p className="text-xs text-muted-foreground mb-4">
+            Create your first session to get started.
           </p>
-          <Button onClick={() => setShowCreateDialog(true)} className="shadow-sm gap-2">
-            <Plus className="w-4 h-4" />
+          <Button
+            onClick={() => setShowCreateDialog(true)}
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+          >
+            <Plus className="w-3.5 h-3.5" />
             New Session
           </Button>
         </div>
       ) : filteredSessions && filteredSessions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/60 py-16 sm:py-20 px-6 animate-in fade-in-0 duration-300">
-          <Search className="w-10 h-10 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-1.5">
-            No sessions match your filters
-          </h3>
-          <p className="text-sm text-muted-foreground mb-6 max-w-sm text-center">
-            Try adjusting your search or status filter.
+        /* Empty state — filters yielded nothing */
+        <div className="flex flex-col items-center justify-center py-20 animate-in fade-in-0 duration-300">
+          <Search className="w-8 h-8 text-muted-foreground/60 mb-3" />
+          <p className="text-sm font-medium text-foreground mb-1">No matching sessions</p>
+          <p className="text-xs text-muted-foreground mb-4">
+            Try adjusting your search or filters.
           </p>
-          <Button variant="outline" onClick={clearFilters} className="gap-2">
-            <X className="w-4 h-4" />
+          <Button variant="outline" size="sm" onClick={clearFilters} className="h-7 text-xs gap-1.5">
+            <X className="w-3 h-3" />
             Clear filters
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in-0 duration-300">
-          {(filteredSessions ?? sessions).map((session) => (
-            <SessionCard
-              key={session._id}
-              session={session}
-              onNavigate={(path) => navigate(path)}
-              onDelete={(stats) => setDeletingSession({ id: session._id, title: session.title, stats })}
-              onDuplicate={() => handleDuplicate(session._id)}
-              onCopyCode={() => copyCode(session.code)}
-              onCopyUrl={() => copyUrl(session.code)}
-            />
-          ))}
+        /* Session rows */
+        <div className="rounded-lg border animate-in fade-in-0 duration-200">
+          <div className="divide-y">
+            {(filteredSessions ?? sessions).map((session) => (
+              <SessionRow
+                key={session._id}
+                session={session}
+                onNavigate={(path) => navigate(path)}
+                onDelete={(stats) => setDeletingSession({ id: session._id, title: session.title, stats })}
+                onDuplicate={() => handleDuplicate(session._id)}
+                onCopyCode={() => copyCode(session.code)}
+                onCopyUrl={() => copyUrl(session.code)}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -343,7 +366,7 @@ export function DashboardPage() {
   )
 }
 
-interface SessionCardProps {
+interface SessionRowProps {
   session: Session
   onNavigate: (path: string) => void
   onDelete: (stats?: { questionCount: number; participantCount: number; responseCount: number }) => void
@@ -352,101 +375,67 @@ interface SessionCardProps {
   onCopyUrl: () => void
 }
 
-function SessionCard({ session, onNavigate, onDelete, onDuplicate, onCopyCode, onCopyUrl }: SessionCardProps) {
+function SessionRow({ session, onNavigate, onDelete, onDuplicate, onCopyCode, onCopyUrl }: SessionRowProps) {
   const stats = useQuery(api.sessions.getStats, {
     sessionId: session._id as Id<'sessions'>,
   })
 
   const statusConfig = STATUS_CONFIG[session.status]
+  const isLive = session.status === 'active'
 
   return (
-    <Card
+    <div
       className={cn(
-        "group relative overflow-hidden transition-all duration-150 hover:shadow-md hover:border-border cursor-pointer",
-        statusConfig.cardClass,
-        session.status === 'active' && "animate-pulse-border"
+        'group relative flex items-center gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50',
+        isLive && 'bg-green-500/[0.03]'
       )}
       onClick={() => onNavigate(`/session/${session._id}`)}
     >
-      {/* Pulse animation for live sessions */}
-      {session.status === 'active' && (
-        <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent pointer-events-none" />
-      )}
+      {/* Desktop layout */}
+      <div className="hidden sm:flex items-center gap-4 w-full">
+        {/* Status dot */}
+        <span
+          className={cn(
+            'w-2 h-2 rounded-full shrink-0',
+            statusConfig.dot,
+            isLive && 'animate-pulse'
+          )}
+        />
 
-      <div className="p-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground text-lg truncate mb-1.5 group-hover:text-primary transition-colors">
-              {session.title}
-            </h3>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant={statusConfig.variant} className="gap-1.5 font-normal">
-                <span className={cn("w-1.5 h-1.5 rounded-full", statusConfig.dot, session.status === 'active' && "animate-pulse")} />
-                {statusConfig.label}
-              </Badge>
-              <span className="text-xs text-muted-foreground">
-                {timeAgo(session._creationTime)}
-              </span>
-            </div>
-          </div>
+        {/* Title */}
+        <span className="text-sm font-medium text-foreground truncate min-w-0 flex-1">
+          {session.title}
+        </span>
 
-          {/* Actions dropdown */}
-          <div onClick={(e) => e.stopPropagation()}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => onNavigate(`/session/${session._id}`)}>
-                  <Pencil className="w-4 h-4" />
-                  Edit session
-                </DropdownMenuItem>
-                {session.status !== 'ended' && (
-                  <DropdownMenuItem onClick={() => onNavigate(`/present/${session._id}`)}>
-                    <Play className="w-4 h-4" />
-                    Present
-                  </DropdownMenuItem>
-                )}
-                {session.status !== 'draft' && (
-                  <DropdownMenuItem onClick={() => onNavigate(`/session/${session._id}/analytics`)}>
-                    <BarChart3 className="w-4 h-4" />
-                    View analytics
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={onCopyCode}>
-                  <Copy className="w-4 h-4" />
-                  Copy join code
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onCopyUrl}>
-                  <ExternalLink className="w-4 h-4" />
-                  Copy join URL
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onDuplicate}>
-                  <Copy className="w-4 h-4" />
-                  Duplicate
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => onDelete(stats ?? undefined)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete session
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
+        {isLive && (
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-green-600 dark:text-green-400 shrink-0">
+            Live
+          </span>
+        )}
 
-        {/* Join code */}
-        <div className="mb-4">
+        {/* Right-side metadata */}
+        <div className="flex items-center gap-5 shrink-0">
+          {/* Stats */}
+          {stats === undefined ? (
+            <Skeleton className="h-3 w-16" />
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-[11px] text-muted-foreground tabular-nums tracking-wide">
+                  {stats.questionCount}
+                  <span className="text-muted-foreground/50 mx-1.5">/</span>
+                  {stats.participantCount}
+                  <span className="text-muted-foreground/50 mx-1.5">/</span>
+                  {stats.responseCount}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {stats.questionCount} question{stats.questionCount !== 1 ? 's' : ''} · {stats.participantCount} participant{stats.participantCount !== 1 ? 's' : ''} · {stats.responseCount} response{stats.responseCount !== 1 ? 's' : ''}
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Code */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -454,85 +443,153 @@ function SessionCard({ session, onNavigate, onDelete, onDuplicate, onCopyCode, o
                   e.stopPropagation()
                   onCopyCode()
                 }}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group/code"
+                className="font-mono text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors w-14 text-right"
               >
-                <span className="text-[11px] font-medium uppercase tracking-wider">Join Code</span>
-                <span className="font-mono text-base font-bold text-foreground tracking-widest">
-                  {session.code}
-                </span>
-                <Copy className="w-3 h-3 opacity-0 group-hover/code:opacity-100 transition-opacity" />
+                {session.code}
               </button>
             </TooltipTrigger>
-            <TooltipContent>Click to copy join code</TooltipContent>
+            <TooltipContent>Click to copy</TooltipContent>
           </Tooltip>
+
+          {/* Time */}
+          <span className="text-[11px] text-muted-foreground/60 w-14 text-right">
+            {timeAgo(session._creationTime)}
+          </span>
+
+          {/* Actions */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <MoreHorizontal className="w-3.5 h-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => onNavigate(`/session/${session._id}`)}>
+                <Pencil className="w-4 h-4" />
+                Edit session
+              </DropdownMenuItem>
+              {session.status !== 'ended' && (
+                <DropdownMenuItem onClick={() => onNavigate(`/present/${session._id}`)}>
+                  <Play className="w-4 h-4" />
+                  Present
+                </DropdownMenuItem>
+              )}
+              {session.status !== 'draft' && (
+                <DropdownMenuItem onClick={() => onNavigate(`/session/${session._id}/analytics`)}>
+                  <BarChart3 className="w-4 h-4" />
+                  View analytics
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={onCopyCode}>
+                <Copy className="w-4 h-4" />
+                Copy join code
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onCopyUrl}>
+                <ExternalLink className="w-4 h-4" />
+                Copy join URL
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onDuplicate}>
+                <Copy className="w-4 h-4" />
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => onDelete(stats ?? undefined)}
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete session
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-
-        {/* Stats */}
-        <div className="flex items-center gap-4 mb-4">
-          {stats === undefined ? (
-            <>
-              <Skeleton className="h-4 w-14" />
-              <Skeleton className="h-4 w-14" />
-              <Skeleton className="h-4 w-14" />
-            </>
-          ) : (
-            <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <HelpCircle className="w-3.5 h-3.5" />
-                    <span className="font-medium tabular-nums">{stats.questionCount}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>{stats.questionCount} question{stats.questionCount !== 1 ? 's' : ''}</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <Users className="w-3.5 h-3.5" />
-                    <span className="font-medium tabular-nums">{stats.participantCount}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>{stats.participantCount} participant{stats.participantCount !== 1 ? 's' : ''}</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span className="font-medium tabular-nums">{stats.responseCount}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>{stats.responseCount} response{stats.responseCount !== 1 ? 's' : ''}</TooltipContent>
-              </Tooltip>
-            </>
-          )}
         </div>
-
-        {/* Action button */}
-        <Button
-          variant={session.status === 'ended' ? 'outline' : 'default'}
-          size="sm"
-          className="w-full gap-2 transition-all"
-          onClick={(e) => {
-            e.stopPropagation()
-            onNavigate(session.status === 'ended' ? `/session/${session._id}` : `/present/${session._id}`)
-          }}
-        >
-          {session.status === 'ended' ? (
-            <>
-              <Pencil className="w-3.5 h-3.5" />
-              View Session
-            </>
-          ) : (
-            <>
-              <Play className="w-3.5 h-3.5" />
-              Present
-            </>
-          )}
-        </Button>
       </div>
-    </Card>
+
+      {/* Mobile layout */}
+      <div className="flex sm:hidden items-center gap-3 w-full">
+        <span
+          className={cn(
+            'w-2 h-2 rounded-full shrink-0',
+            statusConfig.dot,
+            isLive && 'animate-pulse'
+          )}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-foreground truncate">
+              {session.title}
+            </span>
+            {isLive && (
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-green-600 dark:text-green-400 shrink-0">
+                Live
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="font-mono text-[11px] text-muted-foreground">{session.code}</span>
+            <span className="text-[11px] text-muted-foreground/50">·</span>
+            <span className="text-[11px] text-muted-foreground">{timeAgo(session._creationTime)}</span>
+          </div>
+        </div>
+
+        <div onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => onNavigate(`/session/${session._id}`)}>
+                <Pencil className="w-4 h-4" />
+                Edit session
+              </DropdownMenuItem>
+              {session.status !== 'ended' && (
+                <DropdownMenuItem onClick={() => onNavigate(`/present/${session._id}`)}>
+                  <Play className="w-4 h-4" />
+                  Present
+                </DropdownMenuItem>
+              )}
+              {session.status !== 'draft' && (
+                <DropdownMenuItem onClick={() => onNavigate(`/session/${session._id}/analytics`)}>
+                  <BarChart3 className="w-4 h-4" />
+                  View analytics
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={onCopyCode}>
+                <Copy className="w-4 h-4" />
+                Copy join code
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onCopyUrl}>
+                <ExternalLink className="w-4 h-4" />
+                Copy join URL
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onDuplicate}>
+                <Copy className="w-4 h-4" />
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => onDelete(stats ?? undefined)}
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete session
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </div>
   )
 }

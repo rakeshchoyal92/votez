@@ -14,6 +14,12 @@ import '@fontsource/geist-sans/800.css'
 import App from './App'
 import './index.css'
 
+// Swap favicon in dev mode (orange) vs prod (indigo)
+if (import.meta.env.DEV) {
+  const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+  if (link) link.href = '/favicon-dev.svg'
+}
+
 const convexUrl = import.meta.env.VITE_CONVEX_URL
 
 if (!convexUrl) {

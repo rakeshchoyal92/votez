@@ -1,16 +1,8 @@
-import { useMemo } from 'react'
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-  CartesianGrid,
-} from 'recharts'
+import { useMemo, useState } from 'react'
 import { getChartColor } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
-import { Activity } from 'lucide-react'
+import { Activity, ChevronRight } from 'lucide-react'
 import type { Id } from '../../../convex/_generated/dataModel'
 
 interface QuestionTimeline {
@@ -23,173 +15,184 @@ interface SessionTimelineChartProps {
   timeline: QuestionTimeline[]
 }
 
+function formatElapsed(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`
+  const m = Math.floor(seconds / 60)
+  const s = Math.round(seconds % 60)
+  return s > 0 ? `${m}m ${s}s` : `${m}m`
+}
+
 export function SessionTimelineChart({ timeline }: SessionTimelineChartProps) {
-  const { buckets, questionKeys } = useMemo(() => {
-    // Gather all response timestamps
-    const allTimestamps: number[] = []
+  const [open, setOpen] = useState(false)
+  const [hoveredDot, setHoveredDot] = useState<{
+    questionLabel: string
+    elapsed: string
+    x: number
+    y: number
+  } | null>(null)
+
+  const { lanes, timeRange, ticks } = useMemo(() => {
+    // Gather all timestamps to find session range
+    let min = Infinity
+    let max = -Infinity
     for (const qt of timeline) {
       for (const r of qt.responses) {
-        allTimestamps.push(r.answeredAt)
+        if (r.answeredAt < min) min = r.answeredAt
+        if (r.answeredAt > max) max = r.answeredAt
       }
     }
 
-    if (allTimestamps.length < 2) {
-      return { buckets: [], questionKeys: [] }
+    if (min === Infinity || max === min) {
+      return { lanes: [], timeRange: { min: 0, max: 1 }, ticks: [] }
     }
 
-    const min = Math.min(...allTimestamps)
-    const max = Math.max(...allTimestamps)
     const range = max - min
 
-    // 20-30 buckets across the full session
-    const bucketCount = Math.max(12, Math.min(30, Math.ceil(allTimestamps.length / 4)))
-    const bucketSize = range / bucketCount
-
-    // Build question keys (truncated titles)
-    const qKeys = timeline
+    // Build lanes — only questions with responses
+    const lanesData = timeline
       .filter((qt) => qt.responses.length > 0)
-      .map((qt) => ({
+      .map((qt, i) => ({
         id: qt.questionId,
-        key: `q_${qt.questionId}`,
-        label: qt.questionTitle.length > 30
-          ? qt.questionTitle.slice(0, 28) + '...'
-          : qt.questionTitle || 'Untitled',
+        label:
+          qt.questionTitle.length > 35
+            ? qt.questionTitle.slice(0, 33) + '...'
+            : qt.questionTitle || 'Untitled',
+        color: getChartColor(i),
+        dots: qt.responses.map((r) => ({
+          position: (r.answeredAt - min) / range,
+          elapsed: (r.answeredAt - min) / 1000,
+        })),
+        responseCount: qt.responses.length,
       }))
 
-    // Initialize buckets
-    const result: Record<string, string | number>[] = []
-    for (let i = 0; i < bucketCount; i++) {
-      const bucketStart = min + i * bucketSize
-      const elapsed = Math.round((bucketStart - min) / 1000)
-      const label =
-        elapsed < 60
-          ? `${elapsed}s`
-          : `${Math.floor(elapsed / 60)}m${elapsed % 60 > 0 ? ` ${elapsed % 60}s` : ''}`
+    // Time axis ticks (5-7 marks)
+    const tickCount = 6
+    const ticksData = Array.from({ length: tickCount + 1 }, (_, i) => {
+      const frac = i / tickCount
+      const elapsed = (frac * range) / 1000
+      return { position: frac, label: formatElapsed(elapsed) }
+    })
 
-      const bucket: Record<string, string | number> = { label, _elapsed: elapsed }
-      for (const qk of qKeys) {
-        bucket[qk.key] = 0
-      }
-      result.push(bucket)
-    }
-
-    // Fill buckets
-    for (const qt of timeline) {
-      const qk = qKeys.find((k) => k.id === qt.questionId)
-      if (!qk) continue
-      for (const r of qt.responses) {
-        const idx = Math.min(
-          Math.floor((r.answeredAt - min) / bucketSize),
-          bucketCount - 1
-        )
-        ;(result[idx][qk.key] as number)++
-      }
-    }
-
-    return { buckets: result, questionKeys: qKeys }
+    return { lanes: lanesData, timeRange: { min, max }, ticks: ticksData }
   }, [timeline])
 
-  if (buckets.length === 0) {
-    return null
-  }
+  if (lanes.length === 0) return null
 
   return (
     <Card className="overflow-hidden border-border/60">
-      <div className="px-5 sm:px-6 pt-5 pb-3 border-b border-border/40 bg-muted/20">
-        <div className="flex items-center gap-2.5 mb-1">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
-            <Activity className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Response Flow</h3>
-            <p className="text-[11px] text-muted-foreground">
-              How responses came in over the session
-            </p>
-          </div>
+      <button
+        type="button"
+        className={cn(
+          'w-full px-5 sm:px-6 py-4 flex items-center gap-2.5 bg-muted/20 text-left transition-colors hover:bg-muted/30',
+          open && 'border-b border-border/40'
+        )}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+          <Activity className="w-4 h-4 text-primary" />
         </div>
-      </div>
-
-      <div className="p-5 sm:p-6">
-        <div className="h-[220px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={buckets} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-              <defs>
-                {questionKeys.map((qk, i) => (
-                  <linearGradient key={qk.key} id={`gradient-${qk.key}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={getChartColor(i)} stopOpacity={0.4} />
-                    <stop offset="95%" stopColor={getChartColor(i)} stopOpacity={0.02} />
-                  </linearGradient>
-                ))}
-              </defs>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="hsl(var(--border))"
-                strokeOpacity={0.4}
-                vertical={false}
-              />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                axisLine={{ stroke: 'hsl(var(--border))', strokeOpacity: 0.4 }}
-                tickLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                axisLine={false}
-                tickLine={false}
-                allowDecimals={false}
-              />
-              <RechartsTooltip
-                cursor={{ stroke: 'hsl(var(--primary))', strokeOpacity: 0.2, strokeWidth: 1 }}
-                contentStyle={{
-                  background: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  padding: '8px 12px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                }}
-                labelFormatter={(label: string) => `At ${label}`}
-                formatter={(value: number, name: string) => {
-                  const qk = questionKeys.find((k) => k.key === name)
-                  return [`${value}`, qk?.label ?? name]
-                }}
-              />
-              {questionKeys.map((qk, i) => (
-                <Area
-                  key={qk.key}
-                  type="monotone"
-                  dataKey={qk.key}
-                  stackId="responses"
-                  stroke={getChartColor(i)}
-                  strokeWidth={1.5}
-                  fill={`url(#gradient-${qk.key})`}
-                  animationDuration={800}
-                  animationEasing="ease-out"
-                />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-foreground">Response Flow</h3>
+          <p className="text-[11px] text-muted-foreground">
+            Each dot is a response — clusters show bursts of activity
+          </p>
         </div>
+        <ChevronRight
+          className={cn(
+            'w-4 h-4 text-muted-foreground/50 transition-transform duration-200 flex-shrink-0',
+            open && 'rotate-90'
+          )}
+        />
+      </button>
 
-        {/* Legend */}
-        {questionKeys.length > 1 && (
-          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4 pt-3 border-t border-border/30">
-            {questionKeys.map((qk, i) => (
-              <div key={qk.key} className="flex items-center gap-1.5">
-                <div
-                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: getChartColor(i) }}
-                />
-                <span className="text-[11px] text-muted-foreground truncate max-w-[180px]">
-                  {qk.label}
+      {open && <div className="p-5 sm:p-6 relative">
+        {/* Swimlanes */}
+        <div className="space-y-0">
+          {lanes.map((lane) => (
+            <div key={lane.id} className="flex items-center gap-3 group">
+              {/* Label */}
+              <div className="w-[140px] sm:w-[180px] flex-shrink-0 pr-2 py-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: lane.color }}
+                  />
+                  <span className="text-[11px] text-muted-foreground truncate leading-tight">
+                    {lane.label}
+                  </span>
+                </div>
+                <span className="text-[10px] text-muted-foreground/40 pl-4 tabular-nums">
+                  {lane.responseCount} response{lane.responseCount !== 1 ? 's' : ''}
                 </span>
               </div>
+
+              {/* Track */}
+              <div className="flex-1 relative h-10">
+                {/* Track line */}
+                <div className="absolute inset-y-0 left-0 right-0 flex items-center">
+                  <div className="w-full h-px bg-border/40" />
+                </div>
+
+                {/* Dots */}
+                {lane.dots.map((dot, i) => (
+                  <div
+                    key={i}
+                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-transform duration-150 hover:scale-[2] cursor-default"
+                    style={{ left: `${dot.position * 100}%` }}
+                    onMouseEnter={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      setHoveredDot({
+                        questionLabel: lane.label,
+                        elapsed: formatElapsed(dot.elapsed),
+                        x: rect.left + rect.width / 2,
+                        y: rect.top,
+                      })
+                    }}
+                    onMouseLeave={() => setHoveredDot(null)}
+                  >
+                    <div
+                      className="w-[6px] h-[6px] rounded-full"
+                      style={{
+                        backgroundColor: lane.color,
+                        boxShadow: `0 0 4px ${lane.color}60`,
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Time axis */}
+        <div className="flex items-center gap-3 mt-1">
+          <div className="w-[140px] sm:w-[180px] flex-shrink-0" />
+          <div className="flex-1 relative h-5">
+            {ticks.map((tick, i) => (
+              <span
+                key={i}
+                className="absolute text-[10px] text-muted-foreground/50 tabular-nums -translate-x-1/2"
+                style={{ left: `${tick.position * 100}%` }}
+              >
+                {tick.label}
+              </span>
             ))}
           </div>
+        </div>
+
+        {/* Tooltip */}
+        {hoveredDot && (
+          <div
+            className="fixed z-50 pointer-events-none px-2.5 py-1.5 rounded-lg border border-border bg-popover text-[11px] shadow-lg -translate-x-1/2 -translate-y-full"
+            style={{
+              left: hoveredDot.x,
+              top: hoveredDot.y - 8,
+            }}
+          >
+            <span className="text-foreground font-medium">At {hoveredDot.elapsed}</span>
+          </div>
         )}
-      </div>
+      </div>}
     </Card>
   )
 }

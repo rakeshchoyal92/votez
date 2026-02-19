@@ -1,14 +1,16 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { Loader2, ArrowLeft, Pencil } from 'lucide-react'
+import { Loader2, ArrowLeft, Pencil, Download } from 'lucide-react'
 import type { Id } from '../../convex/_generated/dataModel'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useSessionAnalytics } from '@/hooks/useSessionAnalytics'
+import { useExportPdf } from '@/hooks/useExportPdf'
 import { OverviewCards } from '@/components/analytics/overview-cards'
 import { SessionTimelineChart } from '@/components/analytics/session-timeline-chart'
-import { QuestionAnalyticsList } from '@/components/analytics/question-analytics-list'
+import { QuestionAnalyticsCard } from '@/components/analytics/question-analytics-card'
 import { ParticipantTable } from '@/components/analytics/participant-table'
+import type { ChartLayout } from '@/components/chart-type-selector'
 
 const STATUS_CONFIG = {
   draft: {
@@ -32,6 +34,11 @@ export function SessionAnalyticsPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
   const analytics = useSessionAnalytics(sessionId as Id<'sessions'>)
+  const { contentRef, exporting, exportPdf } = useExportPdf({
+    filename: analytics.session?.title
+      ? `${analytics.session.title.replace(/[^a-zA-Z0-9]/g, '_')}_analytics`
+      : 'session_analytics',
+  })
 
   if (analytics.isLoading) {
     return (
@@ -93,22 +100,39 @@ export function SessionAnalyticsPage() {
         </div>
 
         {/* Right */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1.5 text-xs font-medium"
-          onClick={() => navigate(`/session/${sessionId}`)}
-        >
-          <Pencil className="w-3.5 h-3.5" />
-          Edit
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs font-medium"
+            onClick={exportPdf}
+            disabled={exporting}
+            data-pdf-exclude
+          >
+            {exporting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            {exporting ? 'Exporting...' : 'Export PDF'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs font-medium"
+            onClick={() => navigate(`/session/${sessionId}`)}
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Edit
+          </Button>
+        </div>
       </header>
 
       {/* Content */}
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-          {/* Overview Cards */}
-          <section>
+        <div ref={contentRef} className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+          {/* Page 1: Overview + Response Flow */}
+          <section data-pdf-page>
             <h2 className="text-lg font-semibold text-foreground mb-4">Overview</h2>
             <OverviewCards
               totalParticipants={analytics.sessionAnalytics?.totalParticipants ?? 0}
@@ -116,32 +140,41 @@ export function SessionAnalyticsPage() {
               responseRate={analytics.sessionAnalytics?.responseRate ?? 0}
               sessionDuration={analytics.sessionAnalytics?.sessionDuration ?? null}
             />
+
+            {analytics.responseTimeline && analytics.responseTimeline.some(qt => qt.responses.length > 0) && (
+              <div className="mt-8">
+                <SessionTimelineChart timeline={analytics.responseTimeline} />
+              </div>
+            )}
           </section>
 
-          {/* Response Flow Timeline */}
-          {analytics.responseTimeline && analytics.responseTimeline.some(qt => qt.responses.length > 0) && (
-            <section>
-              <SessionTimelineChart timeline={analytics.responseTimeline} />
-            </section>
-          )}
+          {/* One page per question */}
+          {analytics.sortedQuestions.map((question, index) => {
+            const timeline = analytics.responseTimeline?.find(qt => qt.questionId === question._id)
+            return (
+              <section key={question._id} data-pdf-page>
+                {index === 0 && (
+                  <h2 className="text-lg font-semibold text-foreground mb-4">
+                    Questions ({analytics.sortedQuestions.length})
+                  </h2>
+                )}
+                <QuestionAnalyticsCard
+                  questionId={question._id}
+                  title={question.title}
+                  type={question.type}
+                  options={question.options}
+                  index={index}
+                  chartLayout={question.chartLayout as ChartLayout | undefined}
+                  correctAnswer={question.correctAnswer}
+                  totalParticipants={analytics.sessionAnalytics?.totalParticipants ?? 0}
+                  timeline={timeline?.responses}
+                />
+              </section>
+            )
+          })}
 
-          {/* Question Analytics */}
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-4">
-              Questions ({analytics.sortedQuestions.length})
-            </h2>
-            <QuestionAnalyticsList
-              sortedQuestions={analytics.sortedQuestions}
-              totalParticipants={analytics.sessionAnalytics?.totalParticipants ?? 0}
-              responseTimeline={analytics.responseTimeline ?? undefined}
-            />
-          </section>
-
-          {/* Participant Engagement */}
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-4">
-              Participant Engagement
-            </h2>
+          {/* Last page: Participant Engagement */}
+          <section data-pdf-page>
             <ParticipantTable
               participants={analytics.participantEngagement ?? []}
             />

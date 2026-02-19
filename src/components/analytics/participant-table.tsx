@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Search, X, ArrowUpDown, User } from 'lucide-react'
+import { Search, X, ArrowUpDown, User, Users, ChevronRight } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,7 @@ type SortField = 'name' | 'questionsAnswered' | 'engagementRate'
 type SortDir = 'asc' | 'desc'
 
 export function ParticipantTable({ participants, isLoading }: ParticipantTableProps) {
+  const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [sortField, setSortField] = useState<SortField>('engagementRate')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -93,6 +94,33 @@ export function ParticipantTable({ participants, isLoading }: ParticipantTablePr
 
   return (
     <Card className="overflow-hidden">
+      {/* Accordion header */}
+      <button
+        type="button"
+        className={cn(
+          'w-full px-5 sm:px-6 py-4 flex items-center gap-2.5 bg-muted/20 text-left transition-colors hover:bg-muted/30',
+          open && 'border-b border-border/40'
+        )}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+          <Users className="w-4 h-4 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-foreground">Participant Engagement</h3>
+          <p className="text-[11px] text-muted-foreground">
+            {participants.length} participant{participants.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <ChevronRight
+          className={cn(
+            'w-4 h-4 text-muted-foreground/50 transition-transform duration-200 flex-shrink-0',
+            open && 'rotate-90'
+          )}
+        />
+      </button>
+
+      {open && <>
       {/* Search */}
       <div className="flex items-center gap-2 p-4 border-b border-border/40">
         <div className="relative flex-1 max-w-xs">
@@ -191,6 +219,7 @@ export function ParticipantTable({ participants, isLoading }: ParticipantTablePr
           </tbody>
         </table>
       </div>
+      </>}
     </Card>
   )
 }

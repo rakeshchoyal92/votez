@@ -20,6 +20,7 @@ export interface PresenterQuestionContentProps {
   chartLayout: ChartLayout
   showPercentages?: boolean
   size?: 'sm' | 'lg'
+  chartColors?: string[]
 }
 
 /**
@@ -83,6 +84,7 @@ export function PresenterQuestionContent({
   chartLayout,
   showPercentages = true,
   size = 'lg',
+  chartColors,
 }: PresenterQuestionContentProps) {
   const sm = size === 'sm'
 
@@ -130,6 +132,7 @@ export function PresenterQuestionContent({
             showPercentage={showPercentages}
             correctAnswer={question.correctAnswer}
             animated={sm}
+            chartColors={chartColors}
           />
         )}
 
@@ -138,6 +141,7 @@ export function PresenterQuestionContent({
             counts={counts}
             total={total}
             size={size}
+            chartColors={chartColors}
           />
         )}
 

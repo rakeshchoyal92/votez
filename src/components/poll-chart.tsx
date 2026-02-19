@@ -24,6 +24,7 @@ interface PollChartProps {
   correctAnswer?: string
   animated?: boolean
   showEmpty?: boolean
+  chartColors?: string[]
 }
 
 export function PollChart({
@@ -36,6 +37,7 @@ export function PollChart({
   correctAnswer,
   animated = true,
   showEmpty = false,
+  chartColors,
 }: PollChartProps) {
   if (total === 0 && !showEmpty) {
     return <WaitingForResponses size={size} />
@@ -47,7 +49,7 @@ export function PollChart({
     return {
       name: option,
       value,
-      fill: getChartColor(i),
+      fill: chartColors?.[i % (chartColors.length || 1)] ?? getChartColor(i),
       pct: total > 0 ? Math.round((value / total) * 100) : 0,
       isCorrect: correctAnswer === option,
     }

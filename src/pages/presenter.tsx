@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import { PresenterView } from '@/components/shared'
 import type { SessionBranding } from '@/components/shared'
 import type { ThemePreset } from '@/components/shared/presenter-view'
+import { useGoogleFont } from '@/hooks/useGoogleFont'
 import { useReactions } from '@/hooks/useReactions'
 import type { ReactionType } from '@/hooks/useReactions'
 import type { TimerStyle } from '@/components/presenter-timer'
@@ -81,6 +82,9 @@ export function PresenterPage() {
 
   // Reactions (must be called unconditionally)
   const { activeReaction, triggerKey, trigger: triggerReaction } = useReactions()
+
+  // Load Google Font for rich themes
+  useGoogleFont(themeOverride?.googleFont, themeOverride?.googleFontWeight)
 
   // Derived state
   const sortedQuestions = questions
@@ -348,6 +352,7 @@ export function PresenterPage() {
         onTimerStyleChange={setTimerStyle}
         onToggleAutoAdvance={() => setAutoAdvance(a => !a)}
         branding={branding}
+        activeRichTheme={themeOverride}
         activeReaction={activeReaction}
         reactionTriggerKey={triggerKey}
         onTriggerReaction={triggerReaction}

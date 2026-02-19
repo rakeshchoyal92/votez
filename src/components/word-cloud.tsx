@@ -6,9 +6,10 @@ interface WordCloudDisplayProps {
   counts: Record<string, number>
   total: number
   size?: 'sm' | 'lg'
+  chartColors?: string[]
 }
 
-export function WordCloudDisplay({ counts, total, size = 'sm' }: WordCloudDisplayProps) {
+export function WordCloudDisplay({ counts, total, size = 'sm', chartColors }: WordCloudDisplayProps) {
   const isLarge = size === 'lg'
 
   const words = useMemo(() => {
@@ -26,10 +27,10 @@ export function WordCloudDisplay({ counts, total, size = 'sm' }: WordCloudDispla
         size: maxCount > 1
           ? minSize + ((count - 1) / (maxCount - 1)) * (maxSize - minSize)
           : (minSize + maxSize) / 2,
-        color: getChartColor(i),
+        color: chartColors?.[i % (chartColors.length || 1)] ?? getChartColor(i),
       }))
       .sort((a, b) => b.count - a.count)
-  }, [counts, isLarge])
+  }, [counts, isLarge, chartColors])
 
   if (total === 0) {
     return <WaitingForResponses size={size} />

@@ -359,6 +359,10 @@ export function SessionEditorPage() {
               onQuestionDraftChange={editor.isEditable ? editor.setQuestionDraft : undefined}
               onResetResults={editor.handleResetResults}
               isEditable={editor.isEditable}
+              brandBgColor={editor.session.brandBgColor}
+              brandAccentColor={editor.session.brandAccentColor}
+              brandTextColor={editor.session.brandTextColor}
+              themePreset={editor.session.themePreset}
             />
           </main>
 
@@ -408,6 +412,8 @@ export function SessionEditorPage() {
                 brandTextColor={editor.session.brandTextColor}
                 brandLogoUrl={editor.session.brandLogoUrl}
                 brandBackgroundImageUrl={editor.session.brandBackgroundImageUrl}
+                themePreset={editor.session.themePreset}
+                onUpdateThemePreset={editor.handleUpdateThemePreset}
                 maxParticipants={editor.session.maxParticipants}
                 isQuizMode={editor.session.isQuizMode ?? false}
                 participantCount={editor.stats?.participantCount ?? 0}

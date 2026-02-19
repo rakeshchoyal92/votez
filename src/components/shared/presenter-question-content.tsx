@@ -12,6 +12,7 @@ export interface PresenterQuestionContentProps {
     options?: string[]
     correctAnswer?: string
     timeLimit?: number
+    optionImageUrls?: (string | null)[] | null
   }
   results: {
     counts: Record<string, number>
@@ -133,6 +134,7 @@ export function PresenterQuestionContent({
             correctAnswer={question.correctAnswer}
             animated={sm}
             chartColors={chartColors}
+            optionImageUrls={question.optionImageUrls}
           />
         )}
 

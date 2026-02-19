@@ -25,6 +25,7 @@ interface PollChartProps {
   animated?: boolean
   showEmpty?: boolean
   chartColors?: string[]
+  optionImageUrls?: (string | null)[] | null
 }
 
 export function PollChart({
@@ -38,10 +39,13 @@ export function PollChart({
   animated = true,
   showEmpty = false,
   chartColors,
+  optionImageUrls,
 }: PollChartProps) {
   if (total === 0 && !showEmpty) {
     return <WaitingForResponses size={size} />
   }
+
+  const hasImages = optionImageUrls?.some(url => url != null) ?? false
 
   const data = options.map((option, i) => {
     const key = safeKey(option)
@@ -52,11 +56,12 @@ export function PollChart({
       fill: chartColors?.[i % (chartColors.length || 1)] ?? getChartColor(i),
       pct: total > 0 ? Math.round((value / total) * 100) : 0,
       isCorrect: correctAnswer === option,
+      imageUrl: optionImageUrls?.[i] ?? null,
     }
   })
 
   if (layout === 'bars') {
-    return <VerticalBarChart data={data} size={size} showPercentage={showPercentage} animated={animated} />
+    return <VerticalBarChart data={data} size={size} showPercentage={showPercentage} animated={animated} hasImages={hasImages} />
   }
 
   if (layout === 'donut') {
@@ -72,6 +77,7 @@ interface ChartData {
   fill: string
   pct: number
   isCorrect: boolean
+  imageUrl: string | null
 }
 
 /* ═══════════════════════════════════════════════════════════ */
@@ -115,6 +121,17 @@ function RankedLegendItem({
             boxShadow: isWinner ? `0 0 8px 2px ${color}50` : 'none',
           }}
         />
+        {/* Option image thumbnail */}
+        {item.imageUrl && (
+          <img
+            src={item.imageUrl}
+            alt=""
+            className={cn(
+              'rounded object-cover flex-shrink-0',
+              sm ? 'w-4 h-4' : 'w-8 h-8'
+            )}
+          />
+        )}
         {/* Option name */}
         <span
           className={cn(
@@ -179,14 +196,17 @@ function VerticalBarChart({
   size,
   showPercentage,
   animated,
+  hasImages,
 }: {
   data: ChartData[]
   size: 'sm' | 'lg'
   showPercentage: boolean
   animated: boolean
+  hasImages?: boolean
 }) {
-  const height = size === 'lg' ? 350 : 220
-  const barSize = size === 'lg' ? 48 : 32
+  const sm = size === 'sm'
+  const height = sm ? 220 : 350
+  const barSize = sm ? 32 : 48
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderLabel = (props: any) => {
@@ -200,7 +220,7 @@ function VerticalBarChart({
         y={y - 8}
         fill="hsl(var(--foreground))"
         textAnchor="middle"
-        fontSize={size === 'lg' ? 14 : 12}
+        fontSize={sm ? 12 : 14}
         fontWeight={600}
       >
         {label}
@@ -214,7 +234,7 @@ function VerticalBarChart({
         <BarChart data={data} margin={{ top: 30, right: 10, left: 10, bottom: 5 }}>
           <XAxis
             dataKey="name"
-            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: size === 'lg' ? 13 : 11 }}
+            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: sm ? 11 : 13 }}
             axisLine={false}
             tickLine={false}
             interval={0}
@@ -235,6 +255,30 @@ function VerticalBarChart({
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+
+      {/* Option image thumbnails below chart */}
+      {hasImages && (
+        <div className="flex justify-center mt-1" style={{ paddingLeft: 10, paddingRight: 10 }}>
+          <div className="flex w-full" style={{ justifyContent: 'space-around' }}>
+            {data.map((entry, i) => (
+              <div key={i} className="flex flex-col items-center" style={{ width: `${100 / data.length}%` }}>
+                {entry.imageUrl ? (
+                  <img
+                    src={entry.imageUrl}
+                    alt={entry.name}
+                    className={cn(
+                      'rounded-md object-cover border border-white/10',
+                      sm ? 'w-8 h-8' : 'w-14 h-14'
+                    )}
+                  />
+                ) : (
+                  <div className={cn('rounded-md bg-muted/20', sm ? 'w-8 h-8' : 'w-14 h-14')} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Correct answer indicator */}
       {data.some((d) => d.isCorrect) && (

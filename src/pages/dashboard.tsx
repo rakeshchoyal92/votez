@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { timeAgo, cn } from '@/lib/utils'
+import { CreateSessionDialog } from '@/components/create-session-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -94,8 +95,7 @@ interface Session {
 export function DashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [isCreating, setIsCreating] = useState(false)
-  const [newTitle, setNewTitle] = useState('')
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
 
   const [search, setSearch] = useQueryState('q', parseAsString.withDefault(''))
   const [statusFilter, setStatusFilter] = useQueryState(
@@ -107,7 +107,6 @@ export function DashboardPage() {
     presenterId: user?.id ?? '',
   })
 
-  const createSession = useMutation(api.sessions.create)
   const deleteSession = useMutation(api.sessions.remove)
   const duplicateSession = useMutation(api.sessions.duplicate)
 
@@ -131,25 +130,6 @@ export function DashboardPage() {
   const clearFilters = () => {
     setSearch('')
     setStatusFilter('all')
-  }
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newTitle.trim() || !user) return
-
-    try {
-      const result = await createSession({
-        title: newTitle.trim(),
-        presenterId: user.id,
-        presenterName: user.user_metadata?.full_name ?? user.email ?? 'Presenter',
-      })
-      setNewTitle('')
-      setIsCreating(false)
-      navigate(`/session/${result.sessionId}`)
-    } catch (err) {
-      toast.error('Failed to create session')
-      console.error(err)
-    }
   }
 
   const handleDelete = async (sessionId: string) => {
@@ -196,7 +176,7 @@ export function DashboardPage() {
           </p>
         </div>
         <Button
-          onClick={() => setIsCreating(true)}
+          onClick={() => setShowCreateDialog(true)}
           className="shadow-sm gap-2 w-full sm:w-auto"
         >
           <Plus className="w-4 h-4" />
@@ -204,36 +184,8 @@ export function DashboardPage() {
         </Button>
       </div>
 
-      {/* Create form */}
-      {isCreating && (
-        <Card className="mb-6 animate-in slide-in-from-top-2 duration-200 border-primary/20">
-          <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-3 p-4">
-            <Input
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Session title (e.g., Team Retrospective)"
-              autoFocus
-              className="flex-1"
-            />
-            <div className="flex gap-2">
-              <Button type="submit" disabled={!newTitle.trim()} className="flex-1 sm:flex-none">
-                Create
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setIsCreating(false)
-                  setNewTitle('')
-                }}
-                className="flex-1 sm:flex-none"
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
+      {/* Create session dialog */}
+      <CreateSessionDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
 
       {/* Search & filters — only show when sessions exist */}
       {sessions && sessions.length > 0 && (
@@ -316,7 +268,7 @@ export function DashboardPage() {
           <p className="text-sm text-muted-foreground mb-6 max-w-sm text-center">
             Create your first polling session and start engaging your audience in real-time.
           </p>
-          <Button onClick={() => setIsCreating(true)} className="shadow-sm gap-2">
+          <Button onClick={() => setShowCreateDialog(true)} className="shadow-sm gap-2">
             <Plus className="w-4 h-4" />
             New Session
           </Button>

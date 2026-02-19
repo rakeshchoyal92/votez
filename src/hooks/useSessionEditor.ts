@@ -5,6 +5,7 @@ import type { Id, Doc } from '../../convex/_generated/dataModel'
 import { toast } from 'sonner'
 import { STATUS_CONFIG, type QuestionType } from '@/components/session/constants'
 import type { ChartLayout } from '@/components/chart-type-selector'
+import type { ThemePreset } from '@/lib/theme-presets'
 
 type ShowResults = 'always' | 'after_submit' | 'after_close'
 export type SaveStatus = 'saved' | 'unsaved' | 'saving'
@@ -29,6 +30,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
   const resetResultsMutation = useMutation(api.responses.resetResults)
   const seedResponsesMutation = useMutation(api.seed.seedResponses)
   const updateQuizModeMutation = useMutation(api.sessions.updateQuizMode)
+  const updateThemePresetMutation = useMutation(api.sessions.updateThemePreset)
 
   // --- Save status ---
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
@@ -546,8 +548,9 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     brandAccentColor?: string
     brandTextColor?: string
   }) => {
-    updateBranding({ sessionId, ...updates })
-  }, [updateBranding, sessionId])
+    // Custom color edits clear the active theme preset
+    updateThemePresetMutation({ sessionId, themePreset: '', ...updates })
+  }, [updateThemePresetMutation, sessionId])
 
   const handleUploadImage = useCallback((field: 'brandLogoId' | 'brandBackgroundImageId', storageId: string) => {
     updateBranding({ sessionId, [field]: storageId })
@@ -560,6 +563,16 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
   const handleToggleQuizMode = useCallback(async (enabled: boolean) => {
     await updateQuizModeMutation({ sessionId, isQuizMode: enabled })
   }, [updateQuizModeMutation, sessionId])
+
+  const handleUpdateThemePreset = useCallback((preset: ThemePreset) => {
+    updateThemePresetMutation({
+      sessionId,
+      themePreset: preset.name,
+      brandBgColor: preset.bg,
+      brandAccentColor: preset.accent,
+      brandTextColor: preset.text,
+    })
+  }, [updateThemePresetMutation, sessionId])
 
   const handleResetSession = useCallback(async () => {
     await resetSessionMutation({ sessionId })
@@ -679,6 +692,7 @@ export function useSessionEditor(sessionId: Id<'sessions'>) {
     handleRemoveImage,
     handleResetSession,
     handleToggleQuizMode,
+    handleUpdateThemePreset,
     deselectQuestion,
 
     // Seed simulation

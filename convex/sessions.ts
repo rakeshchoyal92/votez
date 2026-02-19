@@ -20,6 +20,11 @@ export const create = mutation({
     title: v.string(),
     presenterId: v.string(),
     presenterName: v.string(),
+    themePreset: v.optional(v.string()),
+    brandBgColor: v.optional(v.string()),
+    brandAccentColor: v.optional(v.string()),
+    brandTextColor: v.optional(v.string()),
+    isQuizMode: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // Generate unique code
@@ -42,6 +47,11 @@ export const create = mutation({
       presenterId: args.presenterId,
       presenterName: args.presenterName,
       status: 'draft',
+      themePreset: args.themePreset,
+      brandBgColor: args.brandBgColor,
+      brandAccentColor: args.brandAccentColor,
+      brandTextColor: args.brandTextColor,
+      isQuizMode: args.isQuizMode,
     })
 
     return { sessionId, code }
@@ -272,6 +282,7 @@ export const duplicate = mutation({
       brandLogoId: session.brandLogoId,
       brandBackgroundImageId: session.brandBackgroundImageId,
       isQuizMode: session.isQuizMode,
+      themePreset: session.themePreset,
     })
 
     // Copy questions (without responses)
@@ -416,6 +427,21 @@ export const resetBatch = internalMutation({
       })
       return
     }
+  },
+})
+
+// Update theme preset + branding colors atomically
+export const updateThemePreset = mutation({
+  args: {
+    sessionId: v.id('sessions'),
+    themePreset: v.optional(v.string()),
+    brandBgColor: v.optional(v.string()),
+    brandAccentColor: v.optional(v.string()),
+    brandTextColor: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { sessionId, ...updates } = args
+    await ctx.db.patch(sessionId, updates)
   },
 })
 

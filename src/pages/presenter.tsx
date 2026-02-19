@@ -16,7 +16,8 @@ import {
 import { toast } from 'sonner'
 import { PresenterView } from '@/components/shared'
 import type { SessionBranding } from '@/components/shared'
-import type { ThemePreset } from '@/components/shared/presenter-view'
+import type { ThemePreset } from '@/lib/theme-presets'
+import { findPresetByName } from '@/lib/theme-presets'
 import { useGoogleFont } from '@/hooks/useGoogleFont'
 import { useReactions } from '@/hooks/useReactions'
 import type { ReactionType } from '@/hooks/useReactions'
@@ -78,6 +79,17 @@ export function PresenterPage() {
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [showReopenConfirm, setShowReopenConfirm] = useState(false)
+
+  // Initialize theme from persisted preset on first load
+  const themeInitialized = useRef(false)
+  useEffect(() => {
+    if (themeInitialized.current || !session?.themePreset) return
+    const preset = findPresetByName(session.themePreset)
+    if (preset) {
+      setThemeOverride(preset)
+      themeInitialized.current = true
+    }
+  }, [session?.themePreset])
 
   // Sync fullscreen state with browser
   useEffect(() => {

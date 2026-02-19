@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import type { Id, Doc } from '../../../convex/_generated/dataModel'
@@ -10,11 +10,15 @@ import { WordCloudDisplay } from '@/components/word-cloud'
 import { OpenEndedResults } from '@/components/open-ended-results'
 import { RatingResults } from '@/components/rating-results'
 import type { ChartLayout } from '@/components/chart-type-selector'
+import { findPresetByName } from '@/lib/theme-presets'
 
 type QuestionType = 'multiple_choice' | 'word_cloud' | 'open_ended' | 'rating'
 
+// The listBySession query enriches Doc<'questions'> with resolved image URLs
+type EnrichedQuestion = Doc<'questions'> & { optionImageUrls?: (string | null)[] | null }
+
 interface QuestionPreviewProps {
-  question: Doc<'questions'> | null
+  question: EnrichedQuestion | null
   joinUrl: string
   code: string
   questionDraft?: string
@@ -25,6 +29,11 @@ interface QuestionPreviewProps {
   onQuestionDraftChange?: (val: string) => void
   onResetResults?: (questionId: string) => void
   isEditable?: boolean
+  // Live theme preview
+  brandBgColor?: string
+  brandAccentColor?: string
+  brandTextColor?: string
+  themePreset?: string
 }
 
 export function QuestionPreview({
@@ -39,12 +48,49 @@ export function QuestionPreview({
   onQuestionDraftChange,
   onResetResults,
   isEditable,
+  brandBgColor,
+  brandAccentColor,
+  brandTextColor,
+  themePreset,
 }: QuestionPreviewProps) {
   const [joinBarCollapsed, setJoinBarCollapsed] = useState(false)
   const [simulatedData, setSimulatedData] = useState<{
     counts: Record<string, number>
     total: number
   } | null>(null)
+
+  // Resolve the full preset (rich themes have gradients, patterns, fonts, chart colors)
+  const resolvedPreset = useMemo(
+    () => (themePreset ? findPresetByName(themePreset) : undefined),
+    [themePreset]
+  )
+  const bgColor = brandBgColor || '#1e293b'
+  const textColor = brandTextColor || '#ffffff'
+  const accentColor = brandAccentColor || '#6366f1'
+
+  // Build card background style
+  const cardBgStyle = useMemo<React.CSSProperties>(() => {
+    const style: React.CSSProperties = { backgroundColor: bgColor, color: textColor }
+    if (resolvedPreset?.bgGradient) {
+      style.backgroundImage = resolvedPreset.bgGradient
+    }
+    return style
+  }, [bgColor, textColor, resolvedPreset])
+
+  // Optional pattern overlay style
+  const patternStyle = useMemo<React.CSSProperties | null>(() => {
+    if (!resolvedPreset?.bgPattern) return null
+    return {
+      position: 'absolute',
+      inset: 0,
+      backgroundImage: resolvedPreset.bgPattern,
+      backgroundSize: resolvedPreset.bgPatternSize ?? 'auto',
+      opacity: resolvedPreset.bgPatternOpacity ?? 0.5,
+      pointerEvents: 'none',
+    }
+  }, [resolvedPreset])
+
+  const chartColors = resolvedPreset?.chartColors
 
   const type = (typeDraft ?? question?.type ?? 'multiple_choice') as QuestionType
 
@@ -117,30 +163,44 @@ export function QuestionPreview({
       className="flex flex-col items-center px-6 lg:px-10 py-6 lg:py-8 min-h-full animate-in fade-in-0 slide-in-from-bottom-2 duration-200"
     >
       {/* ── Preview slide card — fixed 16:10 aspect ── */}
-      <div className="w-full max-w-[680px] aspect-[16/10] rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_20px_rgba(0,0,0,0.3)] border border-border/30 overflow-hidden bg-background flex flex-col">
+      <div
+        className="w-full max-w-[680px] aspect-[16/10] rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_20px_rgba(0,0,0,0.3)] border border-white/[0.08] overflow-hidden flex flex-col relative transition-all duration-300"
+        style={cardBgStyle}
+      >
+        {/* Pattern overlay for rich themes */}
+        {patternStyle && <div style={patternStyle} />}
+
         {/* Join bar — collapsible */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 relative z-10">
           {joinBarCollapsed ? (
             <button
               onClick={() => setJoinBarCollapsed(false)}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-[11px] text-muted-foreground/50 transition-colors w-full border-b border-border/30 hover:bg-muted/30"
+              className="flex items-center gap-1.5 px-4 py-1.5 text-[11px] transition-colors w-full border-b"
+              style={{ color: textColor + '60', borderColor: textColor + '15' }}
             >
               <ChevronDown className="w-3 h-3" />
               Show join info
             </button>
           ) : (
-            <div className="flex items-center justify-between px-4 py-1.5 border-b border-border/30">
+            <div
+              className="flex items-center justify-between px-4 py-1.5 border-b"
+              style={{ borderColor: textColor + '15' }}
+            >
               <div className="flex items-center gap-2 text-xs min-w-0">
-                <span className="text-muted-foreground/50 flex-shrink-0">Join at:</span>
-                <span className="text-foreground/70 font-semibold tracking-tight truncate">{joinUrl}</span>
+                <span style={{ color: textColor + '50' }} className="flex-shrink-0">Join at:</span>
+                <span style={{ color: textColor + 'b0' }} className="font-semibold tracking-tight truncate">{joinUrl}</span>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="text-[10px] font-extrabold tracking-[0.15em] uppercase text-primary/50">
+                <span
+                  className="text-[10px] font-extrabold tracking-[0.15em] uppercase"
+                  style={{ color: accentColor + '80' }}
+                >
                   Votez
                 </span>
                 <button
                   onClick={() => setJoinBarCollapsed(true)}
-                  className="text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+                  className="transition-colors"
+                  style={{ color: textColor + '40' }}
                 >
                   <ChevronUp className="w-3 h-3" />
                 </button>
@@ -150,7 +210,7 @@ export function QuestionPreview({
         </div>
 
         {/* Question content — fills remaining space */}
-        <div className="flex-1 flex flex-col px-6 lg:px-8 pt-5 pb-4 min-h-0">
+        <div className="flex-1 flex flex-col px-6 lg:px-8 pt-5 pb-4 min-h-0 relative z-10">
           {/* Inline editable title */}
           {isEditable && onQuestionDraftChange ? (
             <div className="mb-4 flex-shrink-0">
@@ -158,12 +218,19 @@ export function QuestionPreview({
                 value={displayTitle}
                 onChange={(e) => onQuestionDraftChange(e.target.value)}
                 placeholder="Type your question..."
-                className="w-full text-lg sm:text-xl lg:text-2xl font-bold text-center bg-transparent border-none outline-none leading-tight focus:ring-0 text-foreground placeholder:text-muted-foreground/30 caret-primary"
+                className="w-full text-lg sm:text-xl lg:text-2xl font-bold text-center bg-transparent border-none outline-none leading-tight focus:ring-0 placeholder:opacity-30"
+                style={{ color: textColor, caretColor: accentColor }}
               />
-              <div className="w-12 h-0.5 mx-auto mt-1.5 rounded-full bg-primary/20" />
+              <div
+                className="w-12 h-0.5 mx-auto mt-1.5 rounded-full"
+                style={{ backgroundColor: accentColor + '40' }}
+              />
             </div>
           ) : (
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-center mb-4 leading-tight text-foreground flex-shrink-0">
+            <h2
+              className="text-lg sm:text-xl lg:text-2xl font-bold text-center mb-4 leading-tight flex-shrink-0"
+              style={{ color: textColor }}
+            >
               {displayTitle || 'Untitled Question'}
             </h2>
           )}
@@ -177,15 +244,17 @@ export function QuestionPreview({
               chartLayoutDraft={chartLayoutDraft}
               correctAnswerDraft={correctAnswerDraft}
               simulatedData={simulatedData}
+              chartColors={chartColors}
             />
           </div>
         </div>
 
         {/* Footer stats */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 relative z-10">
           <PreviewFooter
             questionId={question._id}
             simulatedTotal={simulatedData?.total}
+            textColor={textColor}
           />
         </div>
       </div>
@@ -232,21 +301,26 @@ export function QuestionPreview({
 function PreviewFooter({
   questionId,
   simulatedTotal,
+  textColor,
 }: {
   questionId: Id<'questions'>
   simulatedTotal?: number
+  textColor: string
 }) {
   const results = useQuery(api.responses.getResults, { questionId })
   const realTotal = results?.totalResponses ?? 0
   const total = simulatedTotal ?? realTotal
 
   return (
-    <div className="flex items-center justify-end gap-4 px-6 py-2 border-t border-border/30 bg-muted/[0.04]">
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50">
+    <div
+      className="flex items-center justify-end gap-4 px-6 py-2 border-t"
+      style={{ borderColor: textColor + '12', backgroundColor: textColor + '06' }}
+    >
+      <div className="flex items-center gap-1.5 text-[11px]" style={{ color: textColor + '50' }}>
         <Heart className="w-3 h-3" />
         <span className="tabular-nums">{total}</span>
       </div>
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50">
+      <div className="flex items-center gap-1.5 text-[11px]" style={{ color: textColor + '50' }}>
         <Users className="w-3 h-3" />
         <span className="tabular-nums">{total}</span>
       </div>
@@ -263,13 +337,15 @@ function QuestionVisualization({
   chartLayoutDraft,
   correctAnswerDraft,
   simulatedData,
+  chartColors,
 }: {
-  question: Doc<'questions'>
+  question: EnrichedQuestion
   typeDraft?: QuestionType
   optionsDraft?: string[]
   chartLayoutDraft?: ChartLayout
   correctAnswerDraft?: string
   simulatedData: { counts: Record<string, number>; total: number } | null
+  chartColors?: string[]
 }) {
   const results = useQuery(api.responses.getResults, { questionId: question._id as Id<'questions'> })
 
@@ -293,6 +369,8 @@ function QuestionVisualization({
           correctAnswer={correctAnswer}
           animated={false}
           showEmpty
+          optionImageUrls={question.optionImageUrls}
+          chartColors={chartColors}
         />
       </div>
     )
@@ -301,7 +379,7 @@ function QuestionVisualization({
   if (type === 'word_cloud') {
     return (
       <div className="w-full">
-        <WordCloudDisplay counts={counts} total={total} size="sm" />
+        <WordCloudDisplay counts={counts} total={total} size="sm" chartColors={chartColors} />
       </div>
     )
   }

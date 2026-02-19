@@ -20,6 +20,7 @@ export default defineSchema({
     brandLogoId: v.optional(v.string()),             // Convex storage ID
     brandBackgroundImageId: v.optional(v.string()),   // Convex storage ID
     isQuizMode: v.optional(v.boolean()),               // Enable quiz scoring + leaderboard
+    themePreset: v.optional(v.string()),               // Persisted theme preset name (e.g. "Midnight", "Rainbow")
   })
     .index('by_code', ['code'])
     .index('by_presenter', ['presenterId'])

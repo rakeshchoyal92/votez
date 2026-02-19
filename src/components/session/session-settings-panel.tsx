@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { RotateCcw, Loader2, Check, Trophy } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { RotateCcw, Loader2, Check, Trophy, Palette, Pipette } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -8,6 +8,8 @@ import { ColorPicker } from '@/components/ui/color-picker'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { SettingsCard, SectionLabel } from './content-panel'
 import { cn } from '@/lib/utils'
+import { THEME_PRESETS, RICH_THEME_PRESETS } from '@/lib/theme-presets'
+import type { ThemePreset } from '@/lib/theme-presets'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,26 +26,6 @@ const DEFAULT_BG_COLOR = '#1e293b'
 const DEFAULT_ACCENT_COLOR = '#6366f1'
 const DEFAULT_TEXT_COLOR = '#ffffff'
 
-interface ThemePreset {
-  name: string
-  bg: string
-  accent: string
-  text: string
-}
-
-const THEME_PRESETS: ThemePreset[] = [
-  { name: 'Midnight', bg: '#1e293b', accent: '#6366f1', text: '#ffffff' },
-  { name: 'Ocean', bg: '#0c1929', accent: '#06b6d4', text: '#e0f2fe' },
-  { name: 'Sunset', bg: '#1c1412', accent: '#f97316', text: '#fef3c7' },
-  { name: 'Forest', bg: '#0a1f14', accent: '#10b981', text: '#d1fae5' },
-  { name: 'Berry', bg: '#1a0a24', accent: '#d946ef', text: '#fae8ff' },
-  { name: 'Ember', bg: '#1a1110', accent: '#ef4444', text: '#fecaca' },
-  { name: 'Gold', bg: '#1a1508', accent: '#eab308', text: '#fef9c3' },
-  { name: 'Arctic', bg: '#0f172a', accent: '#38bdf8', text: '#f0f9ff' },
-  { name: 'Neon', bg: '#0a0a0a', accent: '#22c55e', text: '#bbf7d0' },
-  { name: 'Rose', bg: '#1c0f14', accent: '#f43f5e', text: '#ffe4e6' },
-]
-
 interface SessionSettingsPanelProps {
   // Branding values
   brandBgColor?: string
@@ -51,6 +33,10 @@ interface SessionSettingsPanelProps {
   brandTextColor?: string
   brandLogoUrl?: string | null
   brandBackgroundImageUrl?: string | null
+
+  // Persisted theme preset
+  themePreset?: string
+  onUpdateThemePreset?: (preset: ThemePreset) => void
 
   // Limits
   maxParticipants?: number
@@ -81,6 +67,8 @@ export function SessionSettingsPanel({
   brandTextColor,
   brandLogoUrl,
   brandBackgroundImageUrl,
+  themePreset,
+  onUpdateThemePreset,
   maxParticipants,
   isQuizMode,
   onToggleQuizMode,
@@ -93,6 +81,14 @@ export function SessionSettingsPanel({
   onResetSession,
 }: SessionSettingsPanelProps) {
   const [resetting, setResetting] = useState(false)
+  const [themeTab, setThemeTab] = useState<'presets' | 'custom'>(
+    themePreset ? 'presets' : 'custom'
+  )
+
+  // Auto-switch tab when preset state changes (e.g. preset picked → show presets tab)
+  useEffect(() => {
+    setThemeTab(themePreset ? 'presets' : 'custom')
+  }, [themePreset])
 
   const handleReset = async () => {
     setResetting(true)
@@ -113,83 +109,195 @@ export function SessionSettingsPanel({
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 space-y-4">
-          {/* Colors */}
+          {/* Theme — Presets vs Custom toggle */}
           <SettingsCard>
             <SectionLabel>Theme</SectionLabel>
-            <div className="grid grid-cols-5 gap-2">
-              {THEME_PRESETS.map((preset) => {
-                const isActive =
-                  (brandBgColor ?? DEFAULT_BG_COLOR) === preset.bg &&
-                  (brandAccentColor ?? DEFAULT_ACCENT_COLOR) === preset.accent &&
-                  (brandTextColor ?? DEFAULT_TEXT_COLOR) === preset.text
-                return (
-                  <button
-                    key={preset.name}
-                    type="button"
-                    title={preset.name}
-                    onClick={() =>
-                      onUpdateBranding({
-                        brandBgColor: preset.bg,
-                        brandAccentColor: preset.accent,
-                        brandTextColor: preset.text,
-                      })
-                    }
-                    className={cn(
-                      'group relative flex flex-col items-center gap-1 rounded-lg p-1.5 transition-all',
-                      isActive
-                        ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
-                        : 'hover:bg-muted/50'
-                    )}
-                  >
-                    <div
-                      className="relative w-8 h-8 rounded-md border border-white/10 shadow-sm transition-transform group-hover:scale-110"
-                      style={{ backgroundColor: preset.bg }}
-                    >
-                      {/* Accent dot */}
-                      <div
-                        className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full border border-black/20"
-                        style={{ backgroundColor: preset.accent }}
-                      />
-                      {/* Check mark for active */}
-                      {isActive && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Check
-                            className="w-3.5 h-3.5"
-                            style={{ color: preset.text }}
-                            strokeWidth={3}
-                          />
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-[9px] text-muted-foreground leading-none truncate w-full text-center">
-                      {preset.name}
-                    </span>
-                  </button>
-                )
-              })}
+
+            {/* Mode toggle */}
+            <div className="flex rounded-lg bg-muted/50 p-0.5 mb-3">
+              <button
+                type="button"
+                onClick={() => setThemeTab('presets')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                  themeTab === 'presets'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground/70'
+                )}
+              >
+                <Palette className="w-3 h-3" />
+                Presets
+              </button>
+              <button
+                type="button"
+                onClick={() => setThemeTab('custom')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                  themeTab === 'custom'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground/70'
+                )}
+              >
+                <Pipette className="w-3 h-3" />
+                Custom
+              </button>
             </div>
 
-            <div className="border-t border-border/30 pt-3 mt-1 space-y-3">
-              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Custom</span>
-              <ColorPicker
-                label="Background"
-                value={brandBgColor ?? ''}
-                defaultValue={DEFAULT_BG_COLOR}
-                onChange={(color) => onUpdateBranding({ brandBgColor: color })}
-              />
-              <ColorPicker
-                label="Accent"
-                value={brandAccentColor ?? ''}
-                defaultValue={DEFAULT_ACCENT_COLOR}
-                onChange={(color) => onUpdateBranding({ brandAccentColor: color })}
-              />
-              <ColorPicker
-                label="Text"
-                value={brandTextColor ?? ''}
-                defaultValue={DEFAULT_TEXT_COLOR}
-                onChange={(color) => onUpdateBranding({ brandTextColor: color })}
-              />
-            </div>
+            {/* Presets tab */}
+            {themeTab === 'presets' && (
+              <div className="space-y-2 animate-in fade-in-0 duration-150">
+                {/* Classic presets */}
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Classic</span>
+                  <div className="grid grid-cols-5 gap-2 mt-1">
+                    {THEME_PRESETS.map((preset) => {
+                      const isActive = !!themePreset && themePreset === preset.name
+                      return (
+                        <button
+                          key={preset.name}
+                          type="button"
+                          title={preset.name}
+                          onClick={() => {
+                            if (onUpdateThemePreset) {
+                              onUpdateThemePreset(preset)
+                            } else {
+                              onUpdateBranding({
+                                brandBgColor: preset.bg,
+                                brandAccentColor: preset.accent,
+                                brandTextColor: preset.text,
+                              })
+                            }
+                          }}
+                          className={cn(
+                            'group relative flex flex-col items-center gap-1 rounded-lg p-1.5 transition-all',
+                            isActive
+                              ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
+                              : 'hover:bg-muted/50'
+                          )}
+                        >
+                          <div
+                            className="relative w-8 h-8 rounded-md border border-white/10 shadow-sm transition-transform group-hover:scale-110"
+                            style={{ backgroundColor: preset.bg }}
+                          >
+                            <div
+                              className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full border border-black/20"
+                              style={{ backgroundColor: preset.accent }}
+                            />
+                            {isActive && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <Check
+                                  className="w-3.5 h-3.5"
+                                  style={{ color: preset.text }}
+                                  strokeWidth={3}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[9px] text-muted-foreground leading-none truncate w-full text-center">
+                            {preset.name}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Rich presets */}
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Rich</span>
+                  <div className="grid grid-cols-4 gap-2 mt-1">
+                    {RICH_THEME_PRESETS.map((preset) => {
+                      const isActive = !!themePreset && themePreset === preset.name
+                      return (
+                        <button
+                          key={preset.name}
+                          type="button"
+                          title={preset.name}
+                          onClick={() => {
+                            if (onUpdateThemePreset) {
+                              onUpdateThemePreset(preset)
+                            } else {
+                              onUpdateBranding({
+                                brandBgColor: preset.bg,
+                                brandAccentColor: preset.accent,
+                                brandTextColor: preset.text,
+                              })
+                            }
+                          }}
+                          className={cn(
+                            'group relative flex flex-col items-center gap-1.5 rounded-lg p-1.5 transition-all',
+                            isActive
+                              ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
+                              : 'hover:bg-muted/50'
+                          )}
+                        >
+                          <div
+                            className="relative w-full h-8 rounded-md border border-white/10 shadow-sm transition-transform group-hover:scale-[1.04] overflow-hidden"
+                            style={{ background: preset.bgGradient ?? preset.bg }}
+                          >
+                            <div
+                              className="absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full border border-black/20"
+                              style={{ backgroundColor: preset.accent }}
+                            />
+                            {isActive && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <Check className="w-3.5 h-3.5" style={{ color: preset.text }} strokeWidth={3} />
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[9px] text-muted-foreground leading-none truncate w-full text-center">
+                            {preset.name}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Custom tab */}
+            {themeTab === 'custom' && (
+              <div className="space-y-3 animate-in fade-in-0 duration-150">
+                <ColorPicker
+                  label="Background"
+                  value={brandBgColor ?? ''}
+                  defaultValue={DEFAULT_BG_COLOR}
+                  onChange={(color) => onUpdateBranding({ brandBgColor: color })}
+                />
+                <ColorPicker
+                  label="Accent"
+                  value={brandAccentColor ?? ''}
+                  defaultValue={DEFAULT_ACCENT_COLOR}
+                  onChange={(color) => onUpdateBranding({ brandAccentColor: color })}
+                />
+                <ColorPicker
+                  label="Text"
+                  value={brandTextColor ?? ''}
+                  defaultValue={DEFAULT_TEXT_COLOR}
+                  onChange={(color) => onUpdateBranding({ brandTextColor: color })}
+                />
+
+                {/* Live preview swatch */}
+                <div className="flex items-center gap-2 pt-1">
+                  <div
+                    className="w-full h-7 rounded-md border border-white/10 flex items-center justify-center"
+                    style={{ backgroundColor: brandBgColor || DEFAULT_BG_COLOR }}
+                  >
+                    <span
+                      className="text-[10px] font-semibold"
+                      style={{ color: brandTextColor || DEFAULT_TEXT_COLOR }}
+                    >
+                      Preview
+                    </span>
+                    <span
+                      className="ml-1.5 w-2 h-2 rounded-full"
+                      style={{ backgroundColor: brandAccentColor || DEFAULT_ACCENT_COLOR }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </SettingsCard>
 
           {/* Images */}

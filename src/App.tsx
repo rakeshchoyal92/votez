@@ -12,6 +12,7 @@ const SettingsPage = React.lazy(() => import('@/pages/settings').then(m => ({ de
 const PresenterPage = React.lazy(() => import('@/pages/presenter').then(m => ({ default: m.PresenterPage })))
 const PreviewPage = React.lazy(() => import('@/pages/preview').then(m => ({ default: m.PreviewPage })))
 const AudiencePage = React.lazy(() => import('@/pages/audience').then(m => ({ default: m.AudiencePage })))
+const SessionAnalyticsPage = React.lazy(() => import('@/pages/session-analytics').then(m => ({ default: m.SessionAnalyticsPage })))
 
 function PageSpinner() {
   return (
@@ -78,6 +79,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <PreviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/session/:sessionId/analytics"
+          element={
+            <ProtectedRoute>
+              <SessionAnalyticsPage />
             </ProtectedRoute>
           }
         />

@@ -20,6 +20,7 @@ import {
   Pencil,
   Search,
   X,
+  BarChart3,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { timeAgo, cn } from '@/lib/utils'
@@ -459,6 +460,12 @@ function SessionCard({ session, onNavigate, onDelete, onDuplicate, onCopyCode, o
                   <DropdownMenuItem onClick={() => onNavigate(`/present/${session._id}`)}>
                     <Play className="w-4 h-4" />
                     Present
+                  </DropdownMenuItem>
+                )}
+                {session.status !== 'draft' && (
+                  <DropdownMenuItem onClick={() => onNavigate(`/session/${session._id}/analytics`)}>
+                    <BarChart3 className="w-4 h-4" />
+                    View analytics
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={onCopyCode}>

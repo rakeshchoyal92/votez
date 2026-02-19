@@ -399,7 +399,7 @@ function FullSubmitted({
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
             </span>
           </div>
-          <div className="w-full max-w-sm">
+          <div className="w-full max-w-md">
             <PollChart
               options={question.options}
               counts={submittedResults.counts}
@@ -509,47 +509,10 @@ function FullVoting({
       : 'text-primary border-primary/40'
 
   return (
-    <div key={question._id} className="min-h-screen bg-background flex flex-col animate-fade-in">
+    <div key={question._id} className="min-h-screen bg-background flex flex-col animate-fade-in overflow-x-hidden">
       <AudienceHeader branding={branding} />
 
-      {/* Top edge: timer bar (timed) or progress bar (untimed) */}
-      {isTimed ? (
-        <div className="fixed top-0 left-0 right-0 z-50">
-          <div className="h-1.5 sm:h-1 w-full overflow-hidden bg-muted/30">
-            {isDone ? (
-              <div className="h-full" />
-            ) : (
-              <div
-                className={cn('h-full bg-gradient-to-r transition-[width] duration-1000 ease-linear', gradientClass)}
-                style={{
-                  width: `${fraction * 100}%`,
-                  boxShadow: `0 0 8px ${glowColor}, 0 0 2px ${glowColor}`,
-                }}
-              />
-            )}
-          </div>
-          <div className="flex justify-end px-3 pt-1.5">
-            <span
-              className={cn(
-                'font-mono font-semibold tabular-nums text-xs sm:text-[10px] rounded-full border px-2.5 py-1 sm:px-2 sm:py-0.5 backdrop-blur-sm bg-background/60',
-                badgeClass,
-                isUrgent && 'animate-pulse'
-              )}
-            >
-              {isDone ? "Time's up" : `${secs}s`}
-            </span>
-          </div>
-        </div>
-      ) : totalQuestions ? (
-        <div className="fixed top-0 left-0 right-0 h-1.5 sm:h-1 z-50 bg-muted/30">
-          <div
-            className="h-full bg-primary/60 transition-all duration-500 rounded-r-full"
-            style={{ width: `${progressFraction * 100}%` }}
-          />
-        </div>
-      ) : null}
-
-      <div className="flex-1 flex flex-col items-center max-w-lg mx-auto w-full px-4 pt-16 pb-6 sm:pt-20 sm:px-8 sm:pb-8">
+      <div className="flex-1 flex flex-col items-center max-w-lg mx-auto w-full px-4 pt-6 pb-16 sm:pt-8 sm:px-8 sm:pb-20">
         <p className="text-sm sm:text-xs text-primary font-semibold mb-2 uppercase tracking-widest">
           Question {questionIndex + 1}{totalQuestions ? ` of ${totalQuestions}` : ''}
         </p>
@@ -706,6 +669,43 @@ function FullVoting({
           </div>
         )}
       </div>
+
+      {/* Bottom edge: timer bar (timed) or progress bar (untimed) */}
+      {isTimed ? (
+        <div className="fixed bottom-0 left-0 right-0 z-50">
+          <div className="flex justify-end px-3 pb-1.5">
+            <span
+              className={cn(
+                'font-mono font-semibold tabular-nums text-xs sm:text-[10px] rounded-full border px-2.5 py-1 sm:px-2 sm:py-0.5 backdrop-blur-sm bg-background/60',
+                badgeClass,
+                isUrgent && 'animate-pulse'
+              )}
+            >
+              {isDone ? "Time's up" : `${secs}s`}
+            </span>
+          </div>
+          <div className="h-1.5 sm:h-1 w-full overflow-hidden bg-muted/30">
+            {isDone ? (
+              <div className="h-full" />
+            ) : (
+              <div
+                className={cn('h-full bg-gradient-to-r transition-[width] duration-1000 ease-linear', gradientClass)}
+                style={{
+                  width: `${fraction * 100}%`,
+                  boxShadow: `0 0 8px ${glowColor}, 0 0 2px ${glowColor}`,
+                }}
+              />
+            )}
+          </div>
+        </div>
+      ) : totalQuestions ? (
+        <div className="fixed bottom-0 left-0 right-0 h-1.5 sm:h-1 z-50 bg-muted/30">
+          <div
+            className="h-full bg-primary/60 transition-all duration-500 rounded-r-full"
+            style={{ width: `${progressFraction * 100}%` }}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }

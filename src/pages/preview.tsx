@@ -8,10 +8,10 @@ import {
   Vote,
   RotateCcw,
 } from 'lucide-react'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { PresenterView, AudienceVotingContent } from '@/components/shared'
-import type { SessionBranding } from '@/components/shared'
+import type { SessionBranding, AudienceBranding } from '@/components/shared'
 import type { ChartLayout } from '@/components/chart-type-selector'
 import { useReactions } from '@/hooks/useReactions'
 import {
@@ -42,6 +42,10 @@ export function PreviewPage() {
   const [localVotes, setLocalVotes] = useState<Record<string, PreviewVotes>>({})
   // Track submitted state per question
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({})
+  // Timer state for preview
+  const [questionStartedAt, setQuestionStartedAt] = useState<number | null>(null)
+  const [remaining, setRemaining] = useState<number | null>(null)
+  const [timeUp, setTimeUp] = useState(false)
 
   const { activeReaction, triggerKey, trigger: triggerReaction } = useReactions()
 
@@ -71,7 +75,40 @@ export function PreviewPage() {
       return next
     })
     setSubmitted((prev) => ({ ...prev, [questionId]: false }))
+    setQuestionStartedAt(Date.now())
+    setTimeUp(false)
   }, [])
+
+  // Compute sorted questions and current question early (needed by timer effects)
+  const sorted = [...(questions ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
+  const current = sorted[currentIndex] ?? null
+
+  // Reset timer when question changes
+  useEffect(() => {
+    if (current) {
+      setQuestionStartedAt(Date.now())
+      setTimeUp(false)
+      setRemaining(null)
+    }
+  }, [current?._id])
+
+  // Countdown timer for preview
+  useEffect(() => {
+    const timeLimit = current?.timeLimit && current.timeLimit > 0 ? current.timeLimit : 0
+    if (!timeLimit || !questionStartedAt) {
+      setRemaining(null)
+      return
+    }
+    const update = () => {
+      const elapsed = (Date.now() - questionStartedAt) / 1000
+      const left = Math.max(0, Math.ceil(timeLimit - elapsed))
+      setRemaining(left)
+      if (left === 0) setTimeUp(true)
+    }
+    update()
+    const interval = setInterval(update, 250)
+    return () => clearInterval(interval)
+  }, [current?.timeLimit, questionStartedAt, current?._id])
 
   if (session === undefined || questions === undefined) {
     return (
@@ -81,11 +118,9 @@ export function PreviewPage() {
     )
   }
 
-  const sorted = [...(questions ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
-  const current = sorted[currentIndex] ?? null
   const joinUrl = `${window.location.origin}/join/${session?.code ?? ''}`
 
-  // Build branding for preview
+  // Build branding for presenter view
   const branding: SessionBranding | undefined = session ? {
     brandBgColor: session.brandBgColor,
     brandAccentColor: session.brandAccentColor,
@@ -94,9 +129,24 @@ export function PreviewPage() {
     brandBackgroundImageUrl: session.brandBackgroundImageUrl,
   } : undefined
 
+  // Build audience branding (for participant screen)
+  const audienceBranding: AudienceBranding | undefined = session ? {
+    logoUrl: session.brandLogoUrl,
+    accentColor: session.brandAccentColor,
+    sessionTitle: session.title,
+  } : undefined
+
   const currentVotes: PreviewVotes = current
     ? localVotes[current._id] ?? { counts: {}, total: 0 }
     : { counts: {}, total: 0 }
+
+  // Submitted results for post-submit display in preview
+  const isCurrentSubmitted = current ? !!submitted[current._id] : false
+  const showResults = current?.showResults ?? 'always'
+  const submittedResults =
+    isCurrentSubmitted && showResults === 'after_submit' && current && localVotes[current._id]
+      ? { counts: localVotes[current._id].counts, totalResponses: localVotes[current._id].total }
+      : null
 
   return (
     <TooltipProvider>
@@ -243,7 +293,7 @@ export function PreviewPage() {
 
               {/* Screen */}
               <div
-                className="bg-background h-full flex flex-col"
+                className="bg-background h-full flex flex-col overflow-hidden"
                 style={{ borderRadius: 37 }}
               >
                 {/* Status bar + Dynamic Island */}
@@ -273,31 +323,34 @@ export function PreviewPage() {
                   </div>
                 </div>
 
-                {/* App content */}
-                <div className="flex-1 flex flex-col min-h-0">
+                {/* App content — scaled full audience experience */}
+                <div className="flex-1 min-h-0 relative overflow-hidden">
                   {current ? (
-                    <div className="flex-1 flex flex-col px-3.5">
-                      {/* App header */}
-                      <div className="flex items-center justify-center py-2 mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-[16px] h-[16px] bg-primary rounded-[4px] flex items-center justify-center">
-                            <Vote className="w-2 h-2 text-primary-foreground" />
-                          </div>
-                          <span className="text-[12px] font-bold text-primary tracking-wide">Votez</span>
-                        </div>
-                      </div>
-
-                      {/* Shared audience voting content */}
+                    <div
+                      style={{
+                        width: 375,
+                        transform: 'scale(0.624)',
+                        transformOrigin: 'top left',
+                      }}
+                    >
+                      <div style={{ height: 681, overflowY: 'auto', overflowX: 'hidden' }}>
                       <AudienceVotingContent
                         question={current}
                         questionIndex={currentIndex}
                         onSubmit={(answer) => castVote(current._id, answer)}
-                        isSubmitted={!!submitted[current._id]}
-                        size="compact"
+                        isSubmitted={isCurrentSubmitted}
+                        remainingSeconds={remaining}
+                        isTimeUp={timeUp}
+                        submittedResults={submittedResults}
+                        totalQuestions={sorted.length}
+                        totalSeconds={current.timeLimit && current.timeLimit > 0 ? current.timeLimit : undefined}
+                        size="full"
+                        branding={audienceBranding}
                       />
+                      </div>
                     </div>
                   ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center px-4">
+                    <div className="flex-1 h-full flex flex-col items-center justify-center px-4">
                       <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center mb-2.5">
                         <Vote className="w-4 h-4 text-primary/40" />
                       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { Loader2, ArrowLeft, Pencil, Play, Eye, Users, Settings } from 'lucide-react'
+import { Loader2, ArrowLeft, Pencil, Play, Eye, Users, Settings, BarChart3 } from 'lucide-react'
 import type { Id } from '../../convex/_generated/dataModel'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -243,7 +243,7 @@ export function SessionEditorPage() {
                   <TooltipContent side="bottom">Share</TooltipContent>
                 </Tooltip>
 
-                {editor.sortedQuestions.length > 0 && (
+                {import.meta.env.DEV && editor.sortedQuestions.length > 0 && (
                   <SimulateDialog
                     questionCount={editor.sortedQuestions.length}
                     onSimulate={editor.handleSeedResponses}
@@ -270,6 +270,18 @@ export function SessionEditorPage() {
                   Present
                 </Button>
               </>
+            )}
+
+            {(editor.isLive || editor.isEnded) && (
+              <Button
+                variant={editor.isEnded ? 'default' : 'outline'}
+                size="sm"
+                className="h-8 gap-1.5 text-xs font-medium"
+                onClick={() => navigate(`/session/${sessionId}/analytics`)}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                Analytics
+              </Button>
             )}
           </div>
         </header>

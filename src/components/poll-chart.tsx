@@ -6,12 +6,11 @@ import {
   Cell,
   PieChart,
   Pie,
-  Legend,
   ResponsiveContainer,
   LabelList,
 } from 'recharts'
 import { CheckCircle2 } from 'lucide-react'
-import { getChartColor, safeKey } from '@/lib/utils'
+import { cn, getChartColor, safeKey } from '@/lib/utils'
 import type { ChartLayout } from './chart-type-selector'
 import { WaitingForResponses } from './waiting-for-responses'
 
@@ -71,6 +70,106 @@ interface ChartData {
   fill: string
   pct: number
   isCorrect: boolean
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/*  Ranked legend item — used by donut & pie chart layouts    */
+/* ═══════════════════════════════════════════════════════════ */
+
+function RankedLegendItem({
+  item,
+  rank,
+  maxValue,
+  showPercentage,
+  size,
+}: {
+  item: ChartData
+  rank: number
+  maxValue: number
+  showPercentage: boolean
+  size: 'sm' | 'lg'
+}) {
+  const sm = size === 'sm'
+  const isWinner = rank === 0 && item.value > 0
+  const isEmpty = item.value === 0
+  const barWidth = maxValue > 0 ? (item.value / maxValue) * 100 : 0
+  const color = item.isCorrect ? '#40c057' : item.fill
+
+  return (
+    <div
+      className={cn(
+        'rounded-lg transition-all duration-500',
+        sm ? 'px-2 py-1' : 'px-4 py-3',
+        isEmpty && 'opacity-30',
+        isWinner && 'bg-white/[0.05] ring-1 ring-white/[0.08]'
+      )}
+    >
+      <div className={cn('flex items-center', sm ? 'gap-1.5 mb-0.5' : 'gap-3 mb-2')}>
+        {/* Color indicator */}
+        <div
+          className={cn('rounded-full flex-shrink-0', sm ? 'w-1.5 h-1.5' : 'w-3 h-3')}
+          style={{
+            backgroundColor: color,
+            boxShadow: isWinner ? `0 0 8px 2px ${color}50` : 'none',
+          }}
+        />
+        {/* Option name */}
+        <span
+          className={cn(
+            'truncate font-medium',
+            sm ? 'text-[9px] leading-tight' : 'text-sm',
+            isEmpty ? 'text-muted-foreground/50' : 'text-foreground/90'
+          )}
+        >
+          {item.name}
+        </span>
+        <span className="flex-1" />
+        {/* Secondary count (lg only, when showing percentages) */}
+        {!sm && showPercentage && (
+          <span
+            className={cn(
+              'flex-shrink-0 tabular-nums text-sm',
+              isEmpty ? 'text-muted-foreground/20' : 'text-muted-foreground/50'
+            )}
+          >
+            {item.value}
+          </span>
+        )}
+        {/* Primary stat */}
+        <span
+          className={cn(
+            'flex-shrink-0 tabular-nums font-semibold',
+            sm ? 'text-[9px]' : 'text-base',
+            isEmpty
+              ? 'text-muted-foreground/20'
+              : isWinner
+                ? 'text-foreground'
+                : 'text-foreground/80'
+          )}
+        >
+          {showPercentage ? `${item.pct}%` : item.value}
+        </span>
+      </div>
+      {/* Progress bar */}
+      <div
+        className={cn(
+          'rounded-full overflow-hidden',
+          sm ? 'h-[2px]' : 'h-[6px]',
+          'bg-white/[0.04]'
+        )}
+      >
+        <div
+          className="h-full rounded-full transition-all duration-700 ease-out"
+          style={{
+            width: `${barWidth}%`,
+            backgroundColor: color,
+            opacity: isEmpty ? 0 : 0.85,
+            boxShadow: isWinner ? `0 0 12px ${color}40` : 'none',
+          }}
+        />
+      </div>
+    </div>
+  )
 }
 
 function VerticalBarChart({
@@ -161,65 +260,84 @@ function DonutChart({
   showPercentage: boolean
   animated: boolean
 }) {
-  const chartSize = size === 'lg' ? 350 : 220
-  const outerRadius = size === 'lg' ? 120 : 80
-  const innerRadius = size === 'lg' ? 65 : 45
+  const sm = size === 'sm'
+  const chartDim = sm ? 140 : 340
+  const outerRadius = sm ? 56 : 140
+  const innerRadius = sm ? 32 : 80
+
+  // Sort by value descending for ranked leaderboard
+  const rankedData = [...data].sort((a, b) => b.value - a.value)
+  const maxValue = Math.max(...data.map(d => d.value), 1)
 
   return (
-    <div className="w-full flex flex-col items-center">
-      <ResponsiveContainer width="100%" height={chartSize}>
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            innerRadius={innerRadius}
-            outerRadius={outerRadius}
-            dataKey="value"
-            isAnimationActive={animated}
-            animationDuration={600}
-            stroke="hsl(var(--background))"
-            strokeWidth={2}
-          >
-            {data.map((entry, i) => (
-              <Cell key={i} fill={entry.isCorrect ? '#40c057' : entry.fill} />
-            ))}
-          </Pie>
-          <Legend
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            formatter={(value: string, entry: any) => {
-              const item = entry.payload as ChartData | undefined
-              if (!item) return value
-              const suffix = showPercentage ? ` (${item.pct}%)` : ` — ${item.value}`
-              return (
-                <span className="text-sm text-foreground">
-                  {value}{suffix}
-                </span>
-              )
-            }}
+    <div className={cn(
+      'w-full flex',
+      sm ? 'flex-col items-center gap-3' : 'items-center gap-0'
+    )}>
+      {/* Donut */}
+      <div className={cn(
+        sm ? 'flex-shrink-0' : 'w-1/2 flex justify-center flex-shrink-0'
+      )}>
+        <div style={{ width: chartDim, height: chartDim }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={innerRadius}
+                outerRadius={outerRadius}
+                dataKey="value"
+                isAnimationActive={animated}
+                animationDuration={600}
+                stroke="hsl(var(--background))"
+                strokeWidth={2}
+              >
+                {data.map((entry, i) => (
+                  <Cell key={i} fill={entry.isCorrect ? '#40c057' : entry.fill} />
+                ))}
+              </Pie>
+              {/* Center total */}
+              <text
+                x="50%"
+                y="46%"
+                textAnchor="middle"
+                fill="hsl(var(--foreground))"
+                fontSize={sm ? 18 : 36}
+                fontWeight={700}
+              >
+                {total}
+              </text>
+              <text
+                x="50%"
+                y={sm ? '58%' : '56%'}
+                textAnchor="middle"
+                fill="hsl(var(--muted-foreground))"
+                fontSize={sm ? 8 : 12}
+              >
+                votes
+              </text>
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Ranked legend */}
+      <div className={cn(
+        'min-w-0',
+        sm ? 'w-full space-y-0.5' : 'w-1/2 space-y-1.5'
+      )}>
+        {rankedData.map((item, rank) => (
+          <RankedLegendItem
+            key={item.name}
+            item={item}
+            rank={rank}
+            maxValue={maxValue}
+            showPercentage={showPercentage}
+            size={size}
           />
-          {/* Center total */}
-          <text
-            x="50%"
-            y="48%"
-            textAnchor="middle"
-            fill="hsl(var(--foreground))"
-            fontSize={size === 'lg' ? 28 : 20}
-            fontWeight={700}
-          >
-            {total}
-          </text>
-          <text
-            x="50%"
-            y={size === 'lg' ? '56%' : '58%'}
-            textAnchor="middle"
-            fill="hsl(var(--muted-foreground))"
-            fontSize={size === 'lg' ? 13 : 10}
-          >
-            votes
-          </text>
-        </PieChart>
-      </ResponsiveContainer>
+        ))}
+      </div>
     </div>
   )
 }
@@ -237,8 +355,13 @@ function PieChartView({
   showPercentage: boolean
   animated: boolean
 }) {
-  const chartSize = size === 'lg' ? 350 : 220
-  const outerRadius = size === 'lg' ? 130 : 85
+  const sm = size === 'sm'
+  const chartDim = sm ? 140 : 340
+  const outerRadius = sm ? 60 : 140
+
+  // Sort by value descending for ranked leaderboard
+  const rankedData = [...data].sort((a, b) => b.value - a.value)
+  const maxValue = Math.max(...data.map(d => d.value), 1)
 
   const renderPieLabel = ({
     cx,
@@ -267,7 +390,7 @@ function PieChartView({
         fill="white"
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize={size === 'lg' ? 14 : 11}
+        fontSize={sm ? 11 : 14}
         fontWeight={700}
       >
         {showPercentage ? `${(percent * 100).toFixed(0)}%` : ''}
@@ -276,40 +399,55 @@ function PieChartView({
   }
 
   return (
-    <div className="w-full flex flex-col items-center">
-      <ResponsiveContainer width="100%" height={chartSize}>
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            outerRadius={outerRadius}
-            dataKey="value"
-            isAnimationActive={animated}
-            animationDuration={600}
-            stroke="hsl(var(--background))"
-            strokeWidth={2}
-            label={renderPieLabel}
-            labelLine={false}
-          >
-            {data.map((entry, i) => (
-              <Cell key={i} fill={entry.isCorrect ? '#40c057' : entry.fill} />
-            ))}
-          </Pie>
-          <Legend
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            formatter={(value: string, entry: any) => {
-              const item = entry.payload as ChartData | undefined
-              if (!item) return value
-              return (
-                <span className="text-sm text-foreground">
-                  {value} — {item.value}
-                </span>
-              )
-            }}
+    <div className={cn(
+      'w-full flex',
+      sm ? 'flex-col items-center gap-3' : 'items-center gap-0'
+    )}>
+      {/* Pie chart */}
+      <div className={cn(
+        sm ? 'flex-shrink-0' : 'w-1/2 flex justify-center flex-shrink-0'
+      )}>
+        <div style={{ width: chartDim, height: chartDim }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                outerRadius={outerRadius}
+                dataKey="value"
+                isAnimationActive={animated}
+                animationDuration={600}
+                stroke="hsl(var(--background))"
+                strokeWidth={2}
+                label={renderPieLabel}
+                labelLine={false}
+              >
+                {data.map((entry, i) => (
+                  <Cell key={i} fill={entry.isCorrect ? '#40c057' : entry.fill} />
+                ))}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Ranked legend */}
+      <div className={cn(
+        'min-w-0',
+        sm ? 'w-full space-y-0.5' : 'w-1/2 space-y-1.5'
+      )}>
+        {rankedData.map((item, rank) => (
+          <RankedLegendItem
+            key={item.name}
+            item={item}
+            rank={rank}
+            maxValue={maxValue}
+            showPercentage={showPercentage}
+            size={size}
           />
-        </PieChart>
-      </ResponsiveContainer>
+        ))}
+      </div>
     </div>
   )
 }

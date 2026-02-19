@@ -18,6 +18,9 @@ import {
   Square,
   SkipForward,
   Circle,
+  Maximize2,
+  Minimize2,
+  CheckCircle2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PresenterQuestionContent } from './presenter-question-content'
@@ -129,6 +132,10 @@ export interface PresenterViewProps {
   onThemeOverride?: (preset: ThemePreset | null) => void
   activeThemePreset?: string | null
   onResetResults?: () => void
+
+  // Fullscreen
+  isFullscreen?: boolean
+  onToggleFullscreen?: () => void
 }
 
 function buildBrandingStyle(branding?: SessionBranding): React.CSSProperties {
@@ -364,6 +371,8 @@ function FullPresenterView({
   onTimerStyleChange,
   onToggleAutoAdvance,
   onResetResults,
+  isFullscreen,
+  onToggleFullscreen,
 }: PresenterViewProps) {
   const brandingStyle = buildBrandingStyle(branding)
   const hasBgImage = !!branding?.brandBackgroundImageUrl
@@ -410,6 +419,34 @@ function FullPresenterView({
               <AnimatedCount value={participantCount} className="text-sm font-medium" />
             </div>
 
+            {/* Response progress */}
+            {results && participantCount > 0 && (
+              <>
+                <Separator orientation="vertical" className="h-5 bg-foreground/10" />
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  {results.totalResponses >= participantCount ? (
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <svg className="w-4 h-4 -rotate-90" viewBox="0 0 20 20">
+                      <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.2" />
+                      <circle
+                        cx="10" cy="10" r="8" fill="none"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeDasharray={2 * Math.PI * 8}
+                        strokeDashoffset={2 * Math.PI * 8 * (1 - results.totalResponses / participantCount)}
+                        className="transition-all duration-500"
+                      />
+                    </svg>
+                  )}
+                  <span className="text-sm font-medium tabular-nums">
+                    {results.totalResponses}/{participantCount}
+                  </span>
+                </div>
+              </>
+            )}
+
             <Separator orientation="vertical" className="h-5 bg-foreground/10" />
 
             {/* QR toggle */}
@@ -426,6 +463,27 @@ function FullPresenterView({
               </TooltipTrigger>
               <TooltipContent>Toggle QR sidebar (Q)</TooltipContent>
             </Tooltip>
+
+            {/* Fullscreen toggle */}
+            {onToggleFullscreen && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={isFullscreen ? 'secondary' : 'ghost'}
+                    size="icon"
+                    onClick={onToggleFullscreen}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {isFullscreen ? (
+                      <Minimize2 className="w-4 h-4" />
+                    ) : (
+                      <Maximize2 className="w-4 h-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{isFullscreen ? 'Exit fullscreen (F)' : 'Fullscreen (F)'}</TooltipContent>
+              </Tooltip>
+            )}
 
             {/* Presenter menu */}
             <DropdownMenu>
@@ -683,6 +741,19 @@ function CompactPresenterView({
             <Users className="w-2.5 h-2.5" />
             <AnimatedCount value={participantCount} className="text-[9px] font-medium" />
           </div>
+          {results && participantCount > 0 && (
+            <>
+              <div className="w-px h-2.5 bg-foreground/10" />
+              <div className="flex items-center gap-0.5 text-muted-foreground">
+                {results.totalResponses >= participantCount ? (
+                  <CheckCircle2 className="w-2.5 h-2.5 text-green-500" />
+                ) : null}
+                <span className="text-[8px] font-medium tabular-nums">
+                  {results.totalResponses}/{participantCount}
+                </span>
+              </div>
+            </>
+          )}
           <button
             onClick={onToggleQR}
             className={cn(

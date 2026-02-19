@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -62,6 +62,22 @@ export function PresenterPage() {
   const [autoAdvance, setAutoAdvance] = useState(true)
   const [themeOverride, setThemeOverride] = useState<ThemePreset | null>(null)
   const [showShortcutOverlay, setShowShortcutOverlay] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // Sync fullscreen state with browser
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
+
+  const handleToggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      document.documentElement.requestFullscreen()
+    }
+  }, [])
 
   // Reactions (must be called unconditionally)
   const { activeReaction, triggerKey, trigger: triggerReaction } = useReactions()
@@ -211,10 +227,11 @@ export function PresenterPage() {
       if (e.key === 'ArrowLeft') handlePrev()
       else if (e.key === 'ArrowRight') handleNext()
       else if (e.key === 'q' || e.key === 'Q') setShowQRSidebar((s) => !s)
+      else if (e.key === 'f' || e.key === 'F') handleToggleFullscreen()
       else if (REACTION_KEYS[e.key]) triggerReaction(REACTION_KEYS[e.key])
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isActive, handlePrev, handleNext, navigate, sessionId, triggerReaction, showShortcutOverlay]
+    [isActive, handlePrev, handleNext, navigate, sessionId, triggerReaction, handleToggleFullscreen, showShortcutOverlay]
   )
 
   useEffect(() => {
@@ -351,6 +368,8 @@ export function PresenterPage() {
         onThemeOverride={setThemeOverride}
         activeThemePreset={themeOverride?.name ?? null}
         onResetResults={handleResetResults}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={handleToggleFullscreen}
       />
       {showShortcutOverlay && (
         <ShortcutOverlay onClose={() => setShowShortcutOverlay(false)} />
@@ -363,6 +382,7 @@ export function PresenterPage() {
 const SHORTCUTS = [
   { key: '← →', action: 'Previous / Next question' },
   { key: 'Q', action: 'Toggle QR sidebar' },
+  { key: 'F', action: 'Toggle fullscreen' },
   { key: 'ESC', action: 'Back to editor' },
   { key: '1', action: 'Drumroll' },
   { key: '2', action: 'Applause' },

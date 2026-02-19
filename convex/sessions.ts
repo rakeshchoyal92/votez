@@ -248,6 +248,45 @@ export const getStats = query({
   },
 })
 
+// Aggregate dashboard stats for a presenter
+export const getDashboardStats = query({
+  args: { presenterId: v.string() },
+  handler: async (ctx, args) => {
+    const sessions = await ctx.db
+      .query('sessions')
+      .withIndex('by_presenter', (q) => q.eq('presenterId', args.presenterId))
+      .collect()
+
+    let totalParticipants = 0
+    let totalResponses = 0
+    let liveCount = 0
+
+    for (const session of sessions) {
+      if (session.status === 'active') liveCount++
+
+      const [participants, responses] = await Promise.all([
+        ctx.db
+          .query('participants')
+          .withIndex('by_session', (q) => q.eq('sessionId', session._id))
+          .collect(),
+        ctx.db
+          .query('responses')
+          .withIndex('by_session', (q) => q.eq('sessionId', session._id))
+          .collect(),
+      ])
+      totalParticipants += participants.length
+      totalResponses += responses.length
+    }
+
+    return {
+      totalSessions: sessions.length,
+      liveCount,
+      totalParticipants,
+      totalResponses,
+    }
+  },
+})
+
 // Duplicate (clone) a session with its questions
 export const duplicate = mutation({
   args: { sessionId: v.id('sessions') },

@@ -157,13 +157,14 @@ function ContentBody({
           {isMC && (
             <SettingsCard>
               <SectionLabel>Answer options</SectionLabel>
-              {isDraft ? (
+              {isEditable ? (
                 <>
                   <SortableOptions
                     options={optionsDraft}
                     onChange={onOptionsDraftChange}
                     optionImages={optionImagesDraft}
                     onImageChange={onOptionImagesDraftChange}
+                    canDelete={isDraft}
                   />
                   {optionsDraft.length < 8 && (
                     <Button

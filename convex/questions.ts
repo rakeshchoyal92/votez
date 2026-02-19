@@ -111,14 +111,20 @@ export const update = mutation({
 
     const isMC = (updates.type ?? question.type) === 'multiple_choice'
 
-    // When live, only allow safe field updates (title, correctAnswer, showResults, timeLimit, chartLayout)
+    // When live, allow safe edits: title, options text/add, correctAnswer, showResults, timeLimit, chartLayout
+    // Blocked: type change, allowMultiple toggle
     if (session.status === 'active') {
+      if (updates.type !== undefined && updates.type !== question.type) {
+        throw new Error('Cannot change question type while session is live')
+      }
       await ctx.db.patch(questionId, {
         ...(updates.title !== undefined && { title: updates.title }),
         ...(updates.showResults !== undefined && { showResults: updates.showResults }),
         ...(updates.timeLimit !== undefined && { timeLimit: updates.timeLimit > 0 ? updates.timeLimit : undefined }),
         ...(isMC && updates.correctAnswer !== undefined && { correctAnswer: updates.correctAnswer }),
         ...(isMC && updates.chartLayout !== undefined && { chartLayout: updates.chartLayout }),
+        ...(isMC && updates.options !== undefined && { options: updates.options }),
+        ...(isMC && updates.optionImages !== undefined && { optionImages: updates.optionImages }),
       })
       return
     }

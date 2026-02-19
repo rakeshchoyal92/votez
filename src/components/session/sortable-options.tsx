@@ -32,9 +32,10 @@ interface SortableOptionsProps {
   onChange: (opts: string[]) => void
   optionImages?: string[]
   onImageChange?: (images: string[]) => void
+  canDelete?: boolean
 }
 
-export function SortableOptions({ options, onChange, optionImages, onImageChange }: SortableOptionsProps) {
+export function SortableOptions({ options, onChange, optionImages, onImageChange, canDelete = true }: SortableOptionsProps) {
   // Stable IDs for each option slot
   const [ids] = useState(() => options.map((_, i) => `opt-${i}-${Date.now()}`))
 
@@ -126,7 +127,7 @@ export function SortableOptions({ options, onChange, optionImages, onImageChange
               id={ids[i]}
               value={opt}
               index={i}
-              canRemove={options.length > 2}
+              canRemove={canDelete && options.length > 2}
               onChange={(val) => handleChange(i, val)}
               onRemove={() => handleRemove(i)}
               imageId={optionImages?.[i] || ''}

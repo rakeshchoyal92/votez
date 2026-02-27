@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import type { Id, Doc } from '../../../convex/_generated/dataModel'
@@ -13,6 +13,41 @@ import type { ChartLayout } from '@/components/chart-type-selector'
 import { findPresetByName } from '@/lib/theme-presets'
 
 type QuestionType = 'multiple_choice' | 'word_cloud' | 'open_ended' | 'rating'
+
+function AutoResizeTextarea({
+  value,
+  onChange,
+  placeholder,
+  className,
+  style,
+}: {
+  value: string
+  onChange: (val: string) => void
+  placeholder?: string
+  className?: string
+  style?: React.CSSProperties
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = '0'
+    el.style.height = el.scrollHeight + 'px'
+  }, [value])
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={className}
+      style={style}
+      rows={1}
+    />
+  )
+}
 
 // The listBySession query enriches Doc<'questions'> with resolved image URLs
 type EnrichedQuestion = Doc<'questions'> & { optionImageUrls?: (string | null)[] | null }
@@ -214,11 +249,11 @@ export function QuestionPreview({
           {/* Inline editable title */}
           {isEditable && onQuestionDraftChange ? (
             <div className="mb-4 flex-shrink-0">
-              <input
+              <AutoResizeTextarea
                 value={displayTitle}
-                onChange={(e) => onQuestionDraftChange(e.target.value)}
+                onChange={(val) => onQuestionDraftChange(val)}
                 placeholder="Type your question..."
-                className="w-full text-lg sm:text-xl lg:text-2xl font-bold text-center bg-transparent border-none outline-none leading-tight focus:ring-0 placeholder:opacity-30"
+                className="w-full text-lg sm:text-xl lg:text-2xl font-bold text-center bg-transparent border-none outline-none leading-tight focus:ring-0 placeholder:opacity-30 resize-none overflow-hidden"
                 style={{ color: textColor, caretColor: accentColor }}
               />
               <div
@@ -228,7 +263,7 @@ export function QuestionPreview({
             </div>
           ) : (
             <h2
-              className="text-lg sm:text-xl lg:text-2xl font-bold text-center mb-4 leading-tight flex-shrink-0"
+              className="text-lg sm:text-xl lg:text-2xl font-bold text-center mb-4 leading-tight flex-shrink-0 whitespace-pre-line"
               style={{ color: textColor }}
             >
               {displayTitle || 'Untitled Question'}

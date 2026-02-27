@@ -26,6 +26,7 @@ interface PollChartProps {
   showEmpty?: boolean
   chartColors?: string[]
   optionImageUrls?: (string | null)[] | null
+  fontScale?: number
 }
 
 export function PollChart({
@@ -40,6 +41,7 @@ export function PollChart({
   showEmpty = false,
   chartColors,
   optionImageUrls,
+  fontScale = 1,
 }: PollChartProps) {
   if (total === 0 && !showEmpty) {
     return <WaitingForResponses size={size} />
@@ -61,14 +63,14 @@ export function PollChart({
   })
 
   if (layout === 'bars') {
-    return <VerticalBarChart data={data} size={size} showPercentage={showPercentage} animated={animated} hasImages={hasImages} />
+    return <VerticalBarChart data={data} size={size} showPercentage={showPercentage} animated={animated} hasImages={hasImages} fontScale={fontScale} />
   }
 
   if (layout === 'donut') {
-    return <DonutChart data={data} total={total} size={size} showPercentage={showPercentage} animated={animated} />
+    return <DonutChart data={data} total={total} size={size} showPercentage={showPercentage} animated={animated} fontScale={fontScale} />
   }
 
-  return <PieChartView data={data} total={total} size={size} showPercentage={showPercentage} animated={animated} />
+  return <PieChartView data={data} total={total} size={size} showPercentage={showPercentage} animated={animated} fontScale={fontScale} />
 }
 
 interface ChartData {
@@ -90,12 +92,14 @@ function RankedLegendItem({
   maxValue,
   showPercentage,
   size,
+  fontScale = 1,
 }: {
   item: ChartData
   rank: number
   maxValue: number
   showPercentage: boolean
   size: 'sm' | 'lg'
+  fontScale?: number
 }) {
   const sm = size === 'sm'
   const isWinner = rank === 0 && item.value > 0
@@ -135,10 +139,11 @@ function RankedLegendItem({
         {/* Option name */}
         <span
           className={cn(
-            'truncate font-medium',
-            sm ? 'text-[9px] leading-tight' : 'text-sm',
+            'font-medium break-words min-w-0',
+            sm ? 'text-[9px] leading-tight' : 'leading-snug',
             isEmpty ? 'text-muted-foreground/50' : 'text-foreground/90'
           )}
+          style={!sm ? { fontSize: `${0.875 * fontScale}rem` } : undefined}
         >
           {item.name}
         </span>
@@ -147,9 +152,10 @@ function RankedLegendItem({
         {!sm && showPercentage && (
           <span
             className={cn(
-              'flex-shrink-0 tabular-nums text-sm',
+              'flex-shrink-0 tabular-nums',
               isEmpty ? 'text-muted-foreground/20' : 'text-muted-foreground/50'
             )}
+            style={!sm ? { fontSize: `${0.875 * fontScale}rem` } : undefined}
           >
             {item.value}
           </span>
@@ -158,13 +164,14 @@ function RankedLegendItem({
         <span
           className={cn(
             'flex-shrink-0 tabular-nums font-semibold',
-            sm ? 'text-[9px]' : 'text-base',
+            sm ? 'text-[9px]' : '',
             isEmpty
               ? 'text-muted-foreground/20'
               : isWinner
                 ? 'text-foreground'
                 : 'text-foreground/80'
           )}
+          style={!sm ? { fontSize: `${1 * fontScale}rem` } : undefined}
         >
           {showPercentage ? `${item.pct}%` : item.value}
         </span>
@@ -197,12 +204,14 @@ function VerticalBarChart({
   showPercentage,
   animated,
   hasImages,
+  fontScale = 1,
 }: {
   data: ChartData[]
   size: 'sm' | 'lg'
   showPercentage: boolean
   animated: boolean
   hasImages?: boolean
+  fontScale?: number
 }) {
   const sm = size === 'sm'
   const height = sm ? 220 : 350
@@ -214,13 +223,14 @@ function VerticalBarChart({
     const item = data[index]
     if (!item) return null
     const label = showPercentage ? `${value} (${item.pct}%)` : String(value)
+    const fontSize = sm ? 12 : 14 * fontScale
     return (
       <text
         x={x + width / 2}
         y={y - 8}
         fill="hsl(var(--foreground))"
         textAnchor="middle"
-        fontSize={sm ? 12 : 14}
+        fontSize={fontSize}
         fontWeight={600}
       >
         {label}
@@ -234,11 +244,10 @@ function VerticalBarChart({
         <BarChart data={data} margin={{ top: 30, right: 10, left: 10, bottom: 5 }}>
           <XAxis
             dataKey="name"
-            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: sm ? 11 : 13 }}
+            tick={false}
             axisLine={false}
             tickLine={false}
-            interval={0}
-            tickFormatter={(val: string) => val.length > 14 ? val.slice(0, 12) + '...' : val}
+            height={4}
           />
           <YAxis hide />
           <Bar
@@ -256,29 +265,40 @@ function VerticalBarChart({
         </BarChart>
       </ResponsiveContainer>
 
-      {/* Option image thumbnails below chart */}
-      {hasImages && (
-        <div className="flex justify-center mt-1" style={{ paddingLeft: 10, paddingRight: 10 }}>
-          <div className="flex w-full" style={{ justifyContent: 'space-around' }}>
-            {data.map((entry, i) => (
-              <div key={i} className="flex flex-col items-center" style={{ width: `${100 / data.length}%` }}>
-                {entry.imageUrl ? (
-                  <img
-                    src={entry.imageUrl}
-                    alt={entry.name}
-                    className={cn(
-                      'rounded-md object-cover border border-white/10',
-                      sm ? 'w-8 h-8' : 'w-14 h-14'
-                    )}
-                  />
-                ) : (
-                  <div className={cn('rounded-md bg-muted/20', sm ? 'w-8 h-8' : 'w-14 h-14')} />
-                )}
-              </div>
-            ))}
+      {/* Option labels below chart as HTML for proper wrapping */}
+      <div className="flex w-full" style={{ paddingLeft: 10, paddingRight: 10 }}>
+        {data.map((entry, i) => (
+          <div
+            key={i}
+            className="flex flex-col items-center gap-1"
+            style={{ width: `${100 / data.length}%` }}
+          >
+            {hasImages && (
+              entry.imageUrl ? (
+                <img
+                  src={entry.imageUrl}
+                  alt={entry.name}
+                  className={cn(
+                    'rounded-md object-cover border border-white/10',
+                    sm ? 'w-8 h-8' : 'w-14 h-14'
+                  )}
+                />
+              ) : (
+                <div className={cn('rounded-md bg-muted/20', sm ? 'w-8 h-8' : 'w-14 h-14')} />
+              )
+            )}
+            <span
+              className={cn(
+                'text-center text-muted-foreground leading-snug px-1',
+                sm ? 'text-[11px]' : ''
+              )}
+              style={!sm ? { fontSize: `${0.875 * fontScale}rem` } : undefined}
+            >
+              {entry.name}
+            </span>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
       {/* Correct answer indicator */}
       {data.some((d) => d.isCorrect) && (
@@ -299,12 +319,14 @@ function DonutChart({
   size,
   showPercentage,
   animated,
+  fontScale = 1,
 }: {
   data: ChartData[]
   total: number
   size: 'sm' | 'lg'
   showPercentage: boolean
   animated: boolean
+  fontScale?: number
 }) {
   const sm = size === 'sm'
   const chartDim = sm ? 140 : 340
@@ -381,6 +403,7 @@ function DonutChart({
             maxValue={maxValue}
             showPercentage={showPercentage}
             size={size}
+            fontScale={fontScale}
           />
         ))}
       </div>
@@ -394,12 +417,14 @@ function PieChartView({
   size,
   showPercentage,
   animated,
+  fontScale = 1,
 }: {
   data: ChartData[]
   total: number
   size: 'sm' | 'lg'
   showPercentage: boolean
   animated: boolean
+  fontScale?: number
 }) {
   const sm = size === 'sm'
   const chartDim = sm ? 140 : 340
@@ -491,6 +516,7 @@ function PieChartView({
             maxValue={maxValue}
             showPercentage={showPercentage}
             size={size}
+            fontScale={fontScale}
           />
         ))}
       </div>

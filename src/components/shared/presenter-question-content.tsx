@@ -22,6 +22,7 @@ export interface PresenterQuestionContentProps {
   showPercentages?: boolean
   size?: 'sm' | 'lg'
   chartColors?: string[]
+  fontScale?: number
 }
 
 /**
@@ -86,6 +87,7 @@ export function PresenterQuestionContent({
   showPercentages = true,
   size = 'lg',
   chartColors,
+  fontScale = 1,
 }: PresenterQuestionContentProps) {
   const sm = size === 'sm'
 
@@ -113,7 +115,7 @@ export function PresenterQuestionContent({
     <div className={stableClass}>
       <h2
         className={cn(
-          'font-bold text-foreground text-center leading-tight',
+          'font-bold text-foreground text-center leading-tight whitespace-pre-line break-words',
           sm
             ? 'text-base sm:text-xl lg:text-2xl mb-3 sm:mb-5'
             : 'text-3xl sm:text-4xl mb-4'
@@ -135,6 +137,7 @@ export function PresenterQuestionContent({
             animated={sm}
             chartColors={chartColors}
             optionImageUrls={question.optionImageUrls}
+            fontScale={fontScale}
           />
         )}
 

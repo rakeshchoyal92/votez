@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   ChevronLeft,
@@ -15,6 +16,7 @@ import {
   StopCircle,
   Timer,
   Minus,
+  Plus,
   Square,
   SkipForward,
   Circle,
@@ -22,6 +24,7 @@ import {
   Minimize2,
   CheckCircle2,
   Trophy,
+  ALargeSmall,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PresenterQuestionContent } from './presenter-question-content'
@@ -469,6 +472,10 @@ function FullPresenterView({
 }: PresenterViewProps) {
   const brandingStyle = buildBrandingStyle(branding)
   const richStyles = buildRichThemeStyle(activeRichTheme)
+  const [fontScale, setFontScale] = useState(1)
+  const FONT_SCALE_MIN = 0.75
+  const FONT_SCALE_MAX = 2
+  const FONT_SCALE_STEP = 0.25
 
   return (
     <TooltipProvider>
@@ -661,6 +668,7 @@ function FullPresenterView({
                     showPercentages={showPercentages}
                     size="lg"
                     chartColors={activeRichTheme?.chartColors}
+                    fontScale={fontScale}
                   />
                 </div>
               ) : (
@@ -788,6 +796,49 @@ function FullPresenterView({
                 </Tooltip>
               </>
             )}
+
+            {/* Font size control */}
+            <div className="w-px h-5 bg-foreground/[0.08] mx-1" />
+            <div className="flex items-center gap-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setFontScale(s => Math.max(FONT_SCALE_MIN, +(s - FONT_SCALE_STEP).toFixed(2)))}
+                    disabled={fontScale <= FONT_SCALE_MIN}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/[0.08] transition-all disabled:opacity-25 disabled:pointer-events-none"
+                  >
+                    <Minus className="w-3 h-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Decrease font size</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setFontScale(1)}
+                    className="flex items-center gap-1 px-1 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <ALargeSmall className="w-4 h-4" />
+                    <span className="text-[10px] font-mono tabular-nums w-7 text-center">
+                      {Math.round(fontScale * 100)}%
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Reset font size</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setFontScale(s => Math.min(FONT_SCALE_MAX, +(s + FONT_SCALE_STEP).toFixed(2)))}
+                    disabled={fontScale >= FONT_SCALE_MAX}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/[0.08] transition-all disabled:opacity-25 disabled:pointer-events-none"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Increase font size</TooltipContent>
+              </Tooltip>
+            </div>
 
             {/* Slide counter */}
             <div className="w-px h-5 bg-foreground/[0.08] mx-1" />
